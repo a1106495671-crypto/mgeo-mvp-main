@@ -1,0 +1,248 @@
+import Link from "next/link";
+
+import { PLATFORM_LABELS, PLATFORM_OPTIONS, type PlatformKey } from "@/lib/ranking/data";
+import { buildRankingHref, getIndustryTheme } from "@/lib/ranking/shared";
+
+import { PlatformMatrix } from "./platform-matrix";
+import { PlatformCoverageChart } from "./platform-coverage-chart";
+
+type PlatformCoverageProps = {
+  currentCity: string;
+  currentIndustry: string;
+  currentPlatform?: PlatformKey;
+  currentCoverage?: "low" | "medium" | "high";
+  industries: readonly string[];
+  overview: {
+    trackedBrands: number;
+    averageCoverageRate: number;
+    strongestPlatform: string;
+  };
+  platformStats: Record<PlatformKey, { totalBrands: number; covered: number; rate: number }>;
+  brands: Array<{
+    brandName: string;
+    industry: string;
+    platforms: Record<PlatformKey, boolean>;
+    coverageRate: number;
+  }>;
+};
+
+export function PlatformCoverage({
+  currentCity,
+  currentIndustry,
+  currentPlatform,
+  currentCoverage,
+  industries,
+  overview,
+  platformStats,
+  brands,
+}: PlatformCoverageProps) {
+  return (
+    <section style={styles.section}>
+      <div style={styles.overviewGrid}>
+        <article style={styles.overviewCard}>
+          <div style={styles.overviewLabel}>{currentCity === "全国" ? "参与统计品牌" : `${currentCity}参与统计品牌`}</div>
+          <div style={styles.overviewValue}>{overview.trackedBrands} 个</div>
+        </article>
+        <article style={styles.overviewCard}>
+          <div style={styles.overviewLabel}>平均覆盖率</div>
+          <div style={styles.overviewValue}>{overview.averageCoverageRate}%</div>
+        </article>
+        <article style={styles.overviewCard}>
+          <div style={styles.overviewLabel}>当前最强平台</div>
+          <div style={styles.overviewValue}>{overview.strongestPlatform}</div>
+        </article>
+      </div>
+
+      <div>
+        <h2 style={styles.title}>{currentCity === "全国" ? "AI 平台覆盖率排行" : `${currentCity}平台覆盖率排行`}</h2>
+        <p style={styles.text}>用平台平均覆盖率 + 品牌矩阵，直接回答“竞品覆盖了几个平台、我覆盖了几个”。</p>
+      </div>
+
+      <div style={styles.filterStack}>
+        <div style={styles.filters}>
+          {industries.map((industry) => {
+            const active = currentIndustry === industry;
+            const theme = getIndustryTheme(industry);
+            const href = buildRankingHref({ tab: "platform", city: currentCity, industry });
+            return (
+              <Link
+                key={industry}
+                href={href}
+                style={{
+                  ...styles.chip,
+                  color: theme.text,
+                  background: theme.background,
+                  borderColor: theme.border,
+                  ...(active
+                    ? {
+                        color: "#ffffff",
+                        background: theme.text,
+                        borderColor: theme.text,
+                      }
+                    : {}),
+                }}
+              >
+                {industry}
+              </Link>
+            );
+          })}
+        </div>
+
+        <div style={styles.filters}>
+          <Link href={buildRankingHref({ tab: "platform", city: currentCity, industry: currentIndustry })} style={{ ...styles.chip, ...(!currentPlatform ? styles.chipActive : {}) }}>
+            全部平台
+          </Link>
+          {PLATFORM_OPTIONS.map((platform) => {
+            const active = currentPlatform === platform.key;
+            const href = buildRankingHref({
+              tab: "platform",
+              city: currentCity,
+              industry: currentIndustry,
+              platform: platform.key,
+            });
+
+            return (
+              <Link key={platform.key} href={href} style={{ ...styles.chip, ...(active ? styles.chipActive : {}) }}>
+                {platform.label}
+              </Link>
+            );
+          })}
+        </div>
+
+        <div style={styles.filters}>
+          {[
+            { key: "", label: "全部覆盖率" },
+            { key: "high", label: "高覆盖" },
+            { key: "medium", label: "中覆盖" },
+            { key: "low", label: "低覆盖" },
+          ].map((item) => {
+            const active = (currentCoverage || "") === item.key;
+            const params = new URLSearchParams();
+            const href = buildRankingHref({
+              tab: "platform",
+              city: currentCity,
+              industry: currentIndustry,
+              platform: currentPlatform,
+              coverage: item.key,
+            });
+
+            return (
+              <Link key={item.label} href={href} style={{ ...styles.chip, ...(active ? styles.chipActive : {}) }}>
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={styles.statsCard}>
+        <div style={styles.statsHead}>六大平台品牌平均覆盖率</div>
+        <div style={styles.statsText}>品牌方最在意的不是抽象分数，而是“我的竞品在多少个平台被提及，我漏了哪些平台”。</div>
+        <PlatformCoverageChart
+          data={PLATFORM_OPTIONS.map((platform) => ({
+            label: PLATFORM_LABELS[platform.key],
+            rate: Math.round(platformStats[platform.key].rate * 100),
+            color:
+              platform.key === "doubao"
+                ? "#C26A4A"
+                : platform.key === "deepseek"
+                  ? "#4F7FF5"
+                  : platform.key === "kimi"
+                    ? "#7967D8"
+                    : platform.key === "qianwen"
+                      ? "#D58E2A"
+                      : platform.key === "yuanbao"
+                        ? "#2F9B7C"
+                        : "#C15A7D",
+          }))}
+        />
+      </div>
+
+      <PlatformMatrix brands={brands} />
+    </section>
+  );
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  section: {
+    display: "grid",
+    gap: 20,
+  },
+  overviewGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 16,
+  },
+  overviewCard: {
+    background: "#ffffff",
+    borderRadius: 22,
+    border: "1px solid #e5e7eb",
+    padding: "18px 20px",
+  },
+  overviewLabel: {
+    fontSize: 13,
+    color: "#6b7280",
+    fontWeight: 700,
+  },
+  overviewValue: {
+    marginTop: 10,
+    fontSize: 26,
+    lineHeight: 1.1,
+    letterSpacing: "-0.03em",
+    color: "#111827",
+    fontWeight: 800,
+  },
+  title: {
+    margin: 0,
+    fontSize: 34,
+    lineHeight: 1.08,
+    letterSpacing: "-0.04em",
+    color: "#111827",
+  },
+  text: {
+    margin: "10px 0 0",
+    fontSize: 16,
+    lineHeight: 1.7,
+    color: "#6b7280",
+  },
+  filterStack: {
+    display: "grid",
+    gap: 12,
+  },
+  filters: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  chip: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "10px 14px",
+    borderRadius: 999,
+    textDecoration: "none",
+    border: "1px solid #d8dde5",
+    color: "#111827",
+    background: "#ffffff",
+    fontSize: 14,
+    fontWeight: 700,
+  },
+  statsCard: {
+    borderRadius: 24,
+    border: "1px solid #e5e7eb",
+    background: "#ffffff",
+    padding: 22,
+  },
+  statsHead: {
+    fontSize: 18,
+    fontWeight: 800,
+    color: "#111827",
+    marginBottom: 8,
+  },
+  statsText: {
+    fontSize: 14,
+    lineHeight: 1.7,
+    color: "#6b7280",
+    marginBottom: 16,
+  },
+};
