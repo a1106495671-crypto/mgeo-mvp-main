@@ -448,10 +448,16 @@ function buildUserId(email: string) {
 }
 
 function usePostgres() {
-  return Boolean(process.env.DATABASE_URL);
+  if (process.env.NODE_ENV === "production" && !process.env.DATABASE_URL?.trim()) {
+    throw new Error("生产环境缺少 DATABASE_URL，已禁用 SQLite 回退。");
+  }
+  return Boolean(process.env.DATABASE_URL?.trim());
 }
 
 function sqlite() {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("生产环境已禁用 SQLite，请配置 DATABASE_URL 并使用 Postgres。");
+  }
   return getSqliteDb();
 }
 

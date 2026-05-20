@@ -50,6 +50,16 @@ function buildResponseText(item: ResultItem) {
   return Array.from(new Set(parts)).join("\n\n");
 }
 
+function extractUrlsFromText(text: string) {
+  const httpMatches = text.match(/https?:\/\/[^\s)\]}>\"'，。；;!?！？]+/gi) || [];
+  const bareDomainMatches = text.match(/\b(www\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s)\]}>\"'，。；;!?！？]*)?)/gi) || [];
+  const normalize = (url: string) => url.replace(/[),.，。；;!?！？、]+$/g, "").trim();
+  return Array.from(new Set([
+    ...httpMatches.map(normalize),
+    ...bareDomainMatches.map((domain) => `https://${normalize(domain)}`),
+  ].filter(Boolean)));
+}
+
 function buildMentionedBrands(report: DetectReport, item: ResultItem) {
   const brands = [
     item.mentioned ? report.input.brandName : "",
@@ -59,14 +69,18 @@ function buildMentionedBrands(report: DetectReport, item: ResultItem) {
 }
 
 function buildCitations(item: ResultItem) {
-  return item.authority.sourceNames
+  const responseText = buildResponseText(item);
+  const urlsFromText = extractUrlsFromText(responseText);
+  const urlsFromAuthority = item.authority.sourceNames
     .map((sourceName) => sourceName.trim())
-    .filter(Boolean)
-    .slice(0, 8)
-    .map((sourceName) => ({
-      title: sourceName,
-      url: /^https?:\/\//i.test(sourceName) ? sourceName : "",
-    }));
+    .filter((sourceName) => /^https?:\/\//i.test(sourceName));
+  const urls = Array.from(new Set([...urlsFromText, ...urlsFromAuthority])).slice(0, 8);
+
+  if (urls.length > 0) {
+    return urls.map((url) => ({ title: url, url }));
+  }
+
+  return [];
 }
 
 function buildObservationPayload(report: DetectReport, item: ResultItem) {
@@ -97,6 +111,7 @@ function buildObservationPayload(report: DetectReport, item: ResultItem) {
 async function postObservation(endpoint: string, payload: ReturnType<typeof buildObservationPayload>) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 6000);
+  const syncSecret = process.env.MGEO_DELIVERY_SYNC_SECRET?.trim();
 
   try {
     const response = await fetch(endpoint, {
@@ -104,6 +119,7 @@ async function postObservation(endpoint: string, payload: ReturnType<typeof buil
       headers: {
         "Content-Type": "application/json",
         "x-mgeo-user-id": process.env.MGEO_DELIVERY_USER_ID?.trim() || process.env.MGEO_DEV_USER_ID?.trim() || "demo-user",
+        ...(syncSecret ? { "x-mgeo-sync-secret": syncSecret } : {}),
       },
       body: JSON.stringify(payload),
       signal: controller.signal,

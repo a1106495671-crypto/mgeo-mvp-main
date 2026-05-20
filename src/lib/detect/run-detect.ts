@@ -74,7 +74,28 @@ async function runRealDetectionForModel(input: DetectInput, modelName: DetectInp
   ]);
   const coverageResponse = coverageRuntime.response;
   const descriptionResponse = descriptionRuntime.response;
-  const sourceResponse = sourceRuntime.response;
+  let sourceResponse = sourceRuntime.response;
+
+  const hasCitationUrl = (text: string) =>
+    /https?:\/\/[^\s)\]}>\"'，。；;!?！？]+/i.test(text) ||
+    /\bwww\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s)\]}>\"'，。；;!?！？]*)?/i.test(text);
+
+  if (sourceResponse.success && sourceResponse.rawText.trim() && !hasCitationUrl(sourceResponse.rawText)) {
+    const citationOnlyPrompt = `
+请只输出“参考链接”列表（1-3 条），每条都必须是可访问的完整 URL（http:// 或 https:// 开头）。
+如果你无法确认任何可核验链接，只输出：参考链接：无
+
+问题：${input.query}
+品牌：${input.brandName}
+`.trim();
+    const citationRetry = await callWithRetry(modelName, provider, citationOnlyPrompt, "source");
+    if (citationRetry.response.success && citationRetry.response.rawText.trim()) {
+      sourceResponse = {
+        ...sourceResponse,
+        rawText: `${sourceResponse.rawText}\n\n${citationRetry.response.rawText}`.trim(),
+      };
+    }
+  }
 
   const failures = [coverageResponse, descriptionResponse, sourceResponse].filter(
     (item) => !item.success || !item.rawText

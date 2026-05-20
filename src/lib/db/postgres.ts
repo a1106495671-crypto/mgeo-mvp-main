@@ -3,14 +3,27 @@ import { Pool, type QueryResultRow } from "pg";
 let pool: Pool | null = null;
 let initialized = false;
 
+function normalizeDatabaseUrl(rawUrl: string) {
+  try {
+    const parsed = new URL(rawUrl);
+    // Some managed Postgres URLs inject sslmode that can force strict CA checks
+    // and conflict with runtime TLS settings on serverless platforms.
+    parsed.searchParams.delete("sslmode");
+    return parsed.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 function getPool() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL 未配置");
   }
 
   if (!pool) {
+    const connectionString = normalizeDatabaseUrl(process.env.DATABASE_URL);
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString,
       ssl:
         process.env.PGSSL === "disable"
           ? false

@@ -60,13 +60,16 @@ export function buildSourcePrompt(query: string, _channel: DetectChannel = "web"
 
 ${query}
 
-如果你的回答中使用了明确的信息来源，请尽量写出来源名称。
-如果没有明确来源，请直接回答，不要编造来源。
+如果你的回答中使用了明确的信息来源，请在文末单独输出“参考链接”列表（1-3 条），每条必须是完整 URL（以 http:// 或 https:// 开头）。
+如果没有明确来源，请明确写“参考链接：无”。
 
 要求：
 1. 不要虚构媒体、机构或报告名称
 2. 不确定时不要写“据某些资料显示”这类模糊表述
-3. 如果没有明确来源，可以不写来源
+3. 链接格式示例：
+   - 参考链接：
+     - https://example.com/a
+     - https://example.com/b
 ${buildChannelSimulationHint(channel)}
 `.trim();
 }

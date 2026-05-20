@@ -144,8 +144,31 @@ function classifySourceType(name: string): string {
 function extractSourceNames(rawText: string) {
   const names = new Set<string>();
   const blocks = splitBlocks(rawText);
+  const markdownUrlPattern = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/gi;
+  const urlPattern = /https?:\/\/[^\s)\]}>"'，。；;!?！？]+/gi;
+  const bareDomainPattern = /\b(www\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s)\]}>"'，。；;!?！？]*)?)/gi;
+
+  const normalizedUrl = (value: string) => value.replace(/[),.，。；;!?！？、]+$/g, "").trim();
 
   for (const block of blocks) {
+    const markdownMatches = block.matchAll(markdownUrlPattern);
+    for (const match of markdownMatches) {
+      const normalized = normalizedUrl(match[2] || "");
+      if (normalized) names.add(normalized);
+    }
+
+    const urlMatches = block.match(urlPattern) || [];
+    urlMatches.forEach((url) => {
+      const normalized = normalizedUrl(url);
+      if (normalized) names.add(normalized);
+    });
+
+    const bareDomainMatches = block.match(bareDomainPattern) || [];
+    bareDomainMatches.forEach((domain) => {
+      const normalized = normalizedUrl(domain);
+      if (normalized) names.add(`https://${normalized}`);
+    });
+
     if (VAGUE_SOURCE_PATTERNS.some((pattern) => block.includes(pattern))) {
       continue;
     }

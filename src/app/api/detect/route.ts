@@ -307,6 +307,9 @@ export async function POST(req: Request) {
       if (!isLocalStorageUnavailable(error)) {
         throw error;
       }
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("服务端数据库配置未完成，请联系管理员完成上线配置后再试。");
+      }
       storageAvailable = false;
       console.warn("Local SQLite storage unavailable, continuing with in-memory report fallback.", error);
     }
@@ -374,10 +377,17 @@ export async function POST(req: Request) {
 
     return response;
   } catch (error) {
+    const friendlyMessage =
+      error instanceof Error &&
+      /DATABASE_URL|SQLite|database file|production/i.test(error.message)
+        ? "服务端数据库暂未完成生产配置，请稍后再试。"
+        : error instanceof Error
+          ? error.message
+          : "检测失败，请稍后再试";
     return NextResponse.json(
       {
         success: false,
-        message: error instanceof Error ? error.message : "检测失败，请稍后再试",
+        message: friendlyMessage,
       },
       { status: 500 }
     );

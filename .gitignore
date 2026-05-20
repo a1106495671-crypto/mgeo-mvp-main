@@ -11,3 +11,4 @@ data/*.sqlite-journal
 .env.local
 .tmp-*
 data/mock-reports
+.vercel

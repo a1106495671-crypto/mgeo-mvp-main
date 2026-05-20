@@ -305,7 +305,14 @@ function buildPlatformDetail(row: RankingSnapshotBase) {
 }
 
 async function getLatestSnapshots(days = 30, city: string = "全国") {
-  const rows = await listRankingSnapshots({ days, city, limit: 240 });
+  let rows: RankingSnapshotBase[] = [];
+
+  try {
+    rows = await listRankingSnapshots({ days, city, limit: 240 });
+  } catch (error) {
+    console.error("[ranking] failed to load snapshots, fallback to seed data:", error);
+  }
+
   const deduped = new Map<string, RankingSnapshotBase>();
 
   rows.forEach((row) => {
@@ -462,7 +469,13 @@ export async function getTrendingQueriesData(options?: {
   offset?: number;
 }) {
   const { industry, city = "全国", days = 30, limit = 20, offset = 0 } = options || {};
-  const realRows = await listRankingObservationTrending({ industry, city, days, limit: limit + offset });
+  let realRows: Awaited<ReturnType<typeof listRankingObservationTrending>> = [];
+
+  try {
+    realRows = await listRankingObservationTrending({ industry, city, days, limit: limit + offset });
+  } catch (error) {
+    console.error("[ranking] failed to load trending observations, fallback to seed data:", error);
+  }
 
   if (realRows.length) {
     return {

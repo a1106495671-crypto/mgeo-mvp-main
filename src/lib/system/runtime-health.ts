@@ -70,6 +70,13 @@ export async function getRuntimeHealthSummary(): Promise<RuntimeHealthSummary> {
         mode: result.mode,
         detail: `Postgres 连接正常，最近响应时间基于服务端实时探测。`,
       };
+    } else if (process.env.NODE_ENV === "production") {
+      database = {
+        status: "missing",
+        mode: "postgres",
+        detail: "生产环境未配置 DATABASE_URL，系统已禁用 SQLite 回退。",
+      };
+      blockers.push("生产环境缺少 DATABASE_URL，请先接入 Postgres。");
     } else {
       const result = pingSqlite();
       database = {
