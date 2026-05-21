@@ -224,7 +224,7 @@ export default function ReportDetailPage() {
             <h1 style={styles.statusTitle}>暂时无法读取报告</h1>
             <p style={styles.statusText}>{error || "请稍后重试。"}</p>
             <div style={styles.buttonRow}>
-              <Link href="/detect" style={styles.primaryButton}>
+              <Link href="/#detector" style={styles.primaryButton}>
                 重新核验
               </Link>
               <Link href="/" style={styles.secondaryButton}>
@@ -568,7 +568,7 @@ export default function ReportDetailPage() {
           <div style={styles.adviceCtaArea}>
             <p style={styles.adviceCtaTitle}>需要更多证据的话，可以补充样本再跑一轮。</p>
             <div style={styles.buttonRow}>
-              <Link href="/detect" style={styles.ctaPrimaryButton}>
+              <Link href="/#detector" style={styles.ctaPrimaryButton}>
                 再做一次核验
               </Link>
               <Link href="/" style={styles.secondaryButton}>

@@ -15,6 +15,10 @@ type DetectFormProps = {
   title?: string;
   description?: string;
   initialBrandName?: string;
+  initialIndustry?: string;
+  initialBusinessSummary?: string;
+  initialQuery?: string;
+  initialModels?: ModelName[];
   quota?: {
     used: number;
     limit: number;
@@ -116,6 +120,10 @@ export function DetectForm({
   title = "输入品牌信息，生成一份 MGEO 检测报告",
   description = "系统会根据您填写的品牌信息与检测问题，并发调用多个模型，快速生成一份围绕 Consistency、Coverage、Authority 的检测结果。",
   initialBrandName = "",
+  initialIndustry = "",
+  initialBusinessSummary = "",
+  initialQuery = "",
+  initialModels = [...DEFAULT_MODELS],
   quota = null,
 }: DetectFormProps) {
   const router = useRouter();
@@ -123,10 +131,10 @@ export function DetectForm({
   const isMountedRef = useRef(true);
 
   const [brandName, setBrandName] = useState(initialBrandName);
-  const [industry, setIndustry] = useState("");
-  const [businessSummary, setBusinessSummary] = useState("");
-  const [query, setQuery] = useState("");
-  const [selectedModels, setSelectedModels] = useState<ModelName[]>([...DEFAULT_MODELS]);
+  const [industry, setIndustry] = useState(initialIndustry);
+  const [businessSummary, setBusinessSummary] = useState(initialBusinessSummary);
+  const [query, setQuery] = useState(initialQuery);
+  const [selectedModels, setSelectedModels] = useState<ModelName[]>(initialModels);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [progressItems, setProgressItems] = useState<PlatformProgressItem[]>([]);

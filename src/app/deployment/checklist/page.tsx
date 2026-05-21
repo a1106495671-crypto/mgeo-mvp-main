@@ -25,7 +25,7 @@ const checklist = [
     items: [
       {
         title: "免费检测可提交",
-        verify: "从 /detect 发起一次检测，确认返回 taskId 并跳到 /report/[taskId]。",
+        verify: "从首页免费检测模块发起一次检测，确认返回 taskId 并跳到 /report/[taskId]。",
       },
       {
         title: "报告可导出",

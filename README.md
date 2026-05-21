@@ -2,7 +2,7 @@
 
 这是一个最小可运行版本，当前已包含：
 
-- `/detect` 免费检测页
+- `/#detector` 首页免费检测模块
 - `/api/detect` 检测提交接口
 - `/report/[taskId]` 报告详情页
 - `/api/report/[taskId]` 报告接口
@@ -174,7 +174,7 @@ npm run dev
 打开：
 
 - `http://localhost:3000/`
-- `http://localhost:3000/detect`
+- `http://localhost:3000/#detector`
 - `http://localhost:3000/report/scan_001`
 
 ## 5. 当前真实调用逻辑

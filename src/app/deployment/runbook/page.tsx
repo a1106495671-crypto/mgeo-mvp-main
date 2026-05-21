@@ -20,7 +20,7 @@ const sections = [
     items: [
       "访问首页、/pricing、/ranking、/cases，确认公开页面无 500 与样式错乱。",
       "用测试邮箱登录 /login，确认能进入 /dashboard。",
-      "在 /detect 发起一次检测，确认生成 taskId 并能打开 /report/[taskId]。",
+      "在首页免费检测模块发起一次检测，确认生成 taskId 并能打开 /report/[taskId]。",
       "进入 /history，确认新报告已落库并可查看、重跑与删除。",
       "进入 /deployment/health，再看一次数据库、鉴权、支付、cron 是否都正常。",
     ],

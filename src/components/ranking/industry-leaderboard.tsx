@@ -309,7 +309,7 @@ export function IndustryLeaderboard({
                       查看完整报告
                     </Link>
                     <Link
-                      href={`/detect?brandName=${encodeURIComponent(brand.brandName)}${currentCity !== "全国" ? `&city=${encodeURIComponent(currentCity)}` : ""}`}
+                      href={`/?brandName=${encodeURIComponent(brand.brandName)}${currentCity !== "全国" ? `&city=${encodeURIComponent(currentCity)}` : ""}#detector`}
                       style={styles.compareButton}
                     >
                       免费检测并对比

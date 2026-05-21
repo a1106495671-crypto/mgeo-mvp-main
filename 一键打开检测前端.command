@@ -1,7 +1,8 @@
 #!/bin/zsh
 set -u
 
-PROJECT_DIR="/Users/binbin/Desktop/工作/mgeo-mvp-main"
+PROJECT_DIR="/Users/jeon/Desktop/工作/mgeo-mvp-main"
+LOCAL_NODE_BIN="$HOME/.local/codex-node/node-v22.13.1-darwin-arm64/bin"
 DEFAULT_PORT=3000
 MAX_PORT=3010
 LOG_FILE="$PROJECT_DIR/.dev-server.log"
@@ -9,6 +10,10 @@ PID_FILE="$PROJECT_DIR/.dev-server.pid"
 URL_FILE="$PROJECT_DIR/.dev-server.url"
 
 cd "$PROJECT_DIR" || exit 1
+
+if [ -d "$LOCAL_NODE_BIN" ]; then
+  export PATH="$LOCAL_NODE_BIN:$PATH"
+fi
 
 is_port_busy() {
   lsof -tiTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1

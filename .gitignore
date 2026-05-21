@@ -4,6 +4,7 @@ node_modules
 *.log
 .dev-server.log
 .dev-server.pid
+.dev-server.url
 .codex-bin
 *.tsbuildinfo
 data/*.sqlite

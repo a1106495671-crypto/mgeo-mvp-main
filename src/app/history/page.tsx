@@ -40,7 +40,7 @@ function buildDetectHref(item: HistoryReportItem) {
     models: item.report.input.selectedModels.join(","),
   });
 
-  return `/detect?${params.toString()}`;
+  return `/?${params.toString()}#detector`;
 }
 
 export default async function HistoryPage({
@@ -107,7 +107,7 @@ export default async function HistoryPage({
           </form>
 
           <div style={styles.actions}>
-            <Link href="/detect" style={styles.primaryButton}>
+            <Link href="/#detector" style={styles.primaryButton}>
               新建检测
             </Link>
             <Link href="/" style={styles.secondaryButton}>

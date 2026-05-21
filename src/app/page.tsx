@@ -4,6 +4,8 @@ import Link from "next/link";
 import { DetectForm } from "@/components/detect/DetectForm";
 import { ConsultForm } from "@/components/marketing/consult-form";
 import { SiteShell } from "@/components/marketing/SiteShell";
+import { DEFAULT_MODELS } from "@/lib/detect/model-meta";
+import type { ModelName } from "@/lib/detect/types";
 
 export const metadata: Metadata = {
   title: "董逻辑MGEO - 帮助品牌在AI搜索中被看见",
@@ -77,7 +79,23 @@ const legalLinks = [
   { label: "网站地图" },
 ];
 
-export default function MarketingHomePage() {
+export default async function MarketingHomePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    brandName?: string;
+    industry?: string;
+    businessSummary?: string;
+    query?: string;
+    models?: string;
+  }>;
+}) {
+  const params = (await searchParams) || {};
+  const allowedModels = new Set<string>(DEFAULT_MODELS);
+  const initialModels = params.models
+    ?.split(",")
+    .filter((model): model is ModelName => allowedModels.has(model));
+
   return (
     <SiteShell current="/#detector" hideFooter>
       <main style={styles.page}>
@@ -131,7 +149,14 @@ export default function MarketingHomePage() {
 
         <section id="detector" style={styles.detectSection}>
           <div style={styles.detectShell}>
-            <DetectForm embedded />
+            <DetectForm
+              embedded
+              initialBrandName={params.brandName || ""}
+              initialIndustry={params.industry || ""}
+              initialBusinessSummary={params.businessSummary || ""}
+              initialQuery={params.query || ""}
+              initialModels={initialModels?.length ? initialModels : undefined}
+            />
           </div>
         </section>
 
@@ -227,7 +252,7 @@ export default function MarketingHomePage() {
               董逻辑 MGEO 以清晰的检测入口建立认知，以标准化交付完成优化，以持续监测与复盘推动长期增长，让每一步都可理解、可执行、可追踪。
             </p>
             <div style={styles.ctaActions}>
-              <Link href="/detect" style={styles.ctaPrimary}>
+              <Link href="/#detector" style={styles.ctaPrimary}>
                 立即开始检测
               </Link>
               <Link href="/pricing" style={styles.ctaSecondary}>

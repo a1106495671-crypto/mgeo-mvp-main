@@ -135,7 +135,7 @@ export function BrandSearchBox({
             <div style={styles.resultText}>立即免费检测，30 秒获取你的 AI 可见性评分，并为后续上榜做基线记录。</div>
           </div>
           <Link
-            href={`/detect?brandName=${encodeURIComponent(result.query)}${currentCity !== "全国" ? `&city=${encodeURIComponent(currentCity)}` : ""}`}
+            href={`/?brandName=${encodeURIComponent(result.query)}${currentCity !== "全国" ? `&city=${encodeURIComponent(currentCity)}` : ""}#detector`}
             style={styles.detectAction}
           >
             免费检测你的品牌{currentCity === "全国" ? "" : `（${currentCity}）`}

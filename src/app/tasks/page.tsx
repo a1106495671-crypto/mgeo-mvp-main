@@ -95,7 +95,7 @@ export default async function TasksPage({
             </button>
           </form>
           <div style={styles.actions}>
-            <Link href="/detect" style={styles.primaryButton}>
+            <Link href="/#detector" style={styles.primaryButton}>
               新建检测
             </Link>
             <Link href="/customers" style={styles.secondaryButton}>

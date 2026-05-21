@@ -45,7 +45,7 @@ export default async function DashboardEntryPage({
             当前账号：{summary.user?.email || session.user.email}。这里聚合了你的关键词监控状态、最近趋势和账户检测配额。
           </p>
           <div style={styles.actions}>
-            <Link href="/detect" style={styles.primaryButton}>
+            <Link href="/#detector" style={styles.primaryButton}>
               继续免费检测
             </Link>
             <Link href="/dashboard/keywords" style={styles.secondaryButton}>

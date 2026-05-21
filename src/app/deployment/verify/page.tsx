@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth/auth-options";
 
 const publicLinks = [
   { label: "首页", href: "/" },
-  { label: "免费检测页", href: "/detect" },
+  { label: "首页免费检测模块", href: "/#detector" },
   { label: "定价页", href: "/pricing" },
   { label: "案例页", href: "/cases" },
   { label: "排名页", href: "/ranking" },

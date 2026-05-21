@@ -224,7 +224,7 @@ export default async function RankingPage({
                   <p style={styles.emptyText}>
                     我们正在收录 {currentCityMeta.name} 地区的品牌数据，预计 1-2 周内上线。你也可以现在就先检测自己的品牌在 {currentCityMeta.name} 的 AI 可见性。
                   </p>
-                  <Link href={`/detect?city=${encodeURIComponent(currentCityMeta.name)}`} style={styles.emptyButton}>
+                  <Link href={`/?city=${encodeURIComponent(currentCityMeta.name)}#detector`} style={styles.emptyButton}>
                     免费检测你的品牌
                   </Link>
                 </section>
@@ -286,7 +286,7 @@ export default async function RankingPage({
                   <div style={styles.ctaText}>先做一次免费检测，拿到 TCA 基线和平台覆盖缺口，再决定优化动作。</div>
                 </div>
                 <div style={styles.ctaActions}>
-                  <Link href="/detect" style={styles.ctaPrimary}>
+                  <Link href="/#detector" style={styles.ctaPrimary}>
                     免费检测
                   </Link>
                   <Link href="/pricing" style={styles.ctaSecondary}>
@@ -303,7 +303,7 @@ export default async function RankingPage({
                   <div style={styles.ctaText}>先补齐缺失平台，再谈排名提升。平台覆盖本身就是用户持续回看的核心指标。</div>
                 </div>
                 <div style={styles.ctaActions}>
-                  <Link href="/detect" style={styles.ctaPrimary}>
+                  <Link href="/#detector" style={styles.ctaPrimary}>
                     立即检测覆盖率
                   </Link>
                 </div>
@@ -317,7 +317,7 @@ export default async function RankingPage({
                   <div style={styles.ctaText}>围绕热门问题做内容，是把品牌送进 AI 推荐答案的最快路径之一。</div>
                 </div>
                 <div style={styles.ctaActions}>
-                  <Link href="/detect" style={styles.ctaPrimary}>
+                  <Link href="/#detector" style={styles.ctaPrimary}>
                     检测你的品牌
                   </Link>
                 </div>

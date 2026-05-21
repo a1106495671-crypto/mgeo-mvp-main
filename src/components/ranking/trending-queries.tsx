@@ -114,7 +114,7 @@ export function TrendingQueries({ queries, industries, currentCity, currentIndus
 
               <div style={styles.ctaWrap}>
                 <div style={styles.ctaText}>你的品牌在这个问题上排第几？</div>
-                <Link href={`/detect${currentCity !== "全国" ? `?city=${encodeURIComponent(currentCity)}` : ""}`} style={styles.ctaButton}>
+                <Link href={`${currentCity !== "全国" ? `/?city=${encodeURIComponent(currentCity)}` : "/"}#detector`} style={styles.ctaButton}>
                   立即免费检测
                 </Link>
               </div>

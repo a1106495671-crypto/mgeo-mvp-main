@@ -125,7 +125,7 @@ export default async function CustomerDetailPage({
           </div>
 
           <div style={styles.actions}>
-            <Link href="/detect" style={styles.primaryButton}>
+            <Link href="/#detector" style={styles.primaryButton}>
               新建检测
             </Link>
             <Link href="/customers" style={styles.secondaryButton}>
@@ -295,11 +295,11 @@ export default async function CustomerDetailPage({
                         查看同品牌任务
                       </Link>
                       <Link
-                        href={`/detect?brandName=${encodeURIComponent(task.brandName)}&industry=${encodeURIComponent(
+                        href={`/?brandName=${encodeURIComponent(task.brandName)}&industry=${encodeURIComponent(
                           task.industry
                         )}&businessSummary=${encodeURIComponent(customer.businessSummary)}&query=${encodeURIComponent(
                           task.query
-                        )}&models=${encodeURIComponent(task.selectedModels.join(","))}`}
+                        )}&models=${encodeURIComponent(task.selectedModels.join(","))}#detector`}
                         style={styles.secondaryButton}
                       >
                         重新检测
