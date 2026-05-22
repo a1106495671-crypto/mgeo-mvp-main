@@ -50,6 +50,128 @@ function formatAuthor(author: string) {
   return author.replace("xai", "x-ai");
 }
 
+function formatCompactValue(value: number, suffix: string) {
+  if (value >= 1) return `${value.toFixed(value >= 10 ? 1 : 2)}${suffix}`;
+  return `${Math.round(value * 1000)}B`;
+}
+
+function formatShare(value: number) {
+  return `${value.toFixed(value >= 10 ? 1 : 2)}%`;
+}
+
+function getWeekLabel(index: number, total: number) {
+  const labelIndex = Math.round((index / Math.max(1, total - 1)) * (weekLabels.length - 1));
+  return weekLabels[labelIndex] || weekLabels[0];
+}
+
+function getTooltipX(x: number, barWidth: number, tooltipWidth: number, chartWidth: number, rightPadding: number) {
+  return Math.min(Math.max(0, x + barWidth / 2 - tooltipWidth / 2), chartWidth - tooltipWidth - rightPadding);
+}
+
+function UsageTooltip({
+  week,
+  index,
+  x,
+  y,
+  barWidth,
+  width,
+  chartWidth,
+}: {
+  week: ReturnType<typeof buildUsageSeries>[number];
+  index: number;
+  x: number;
+  y: number;
+  barWidth: number;
+  width: number;
+  chartWidth: number;
+}) {
+  const rows = [...week.parts]
+    .map((part) => ({
+      ...part,
+      share: (part.value / week.total) * 100,
+      label: formatAuthor(part.author),
+      color: authorColors[part.author] || authorColors.others,
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  return (
+    <foreignObject
+      x={getTooltipX(x, barWidth, width, chartWidth, 6)}
+      y={Math.max(0, y)}
+      width={width}
+      height={292}
+      className={styles.chartTooltipObject}
+    >
+      <div className={styles.chartTooltip}>
+        <div className={styles.tooltipDate}>{getWeekLabel(index, 54)}</div>
+        <div className={styles.tooltipRows}>
+          {rows.map((row) => (
+            <div className={styles.tooltipRow} key={row.author}>
+              <span className={styles.tooltipSwatch} style={{ background: row.color }} />
+              <span className={styles.tooltipName}>{row.label}</span>
+              <span className={styles.tooltipValue}>
+                {formatCompactValue(row.value, "T")} · {formatShare(row.share)}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className={styles.tooltipTotal}>
+          <span>Total</span>
+          <span>{formatCompactValue(week.total, "T")}</span>
+        </div>
+      </div>
+    </foreignObject>
+  );
+}
+
+function ShareTooltip({
+  rows,
+  index,
+  x,
+  y,
+  barWidth,
+  width,
+  chartWidth,
+}: {
+  rows: Array<{ id: string; label: string; value: number; share: number; color: string }>;
+  index: number;
+  x: number;
+  y: number;
+  barWidth: number;
+  width: number;
+  chartWidth: number;
+}) {
+  return (
+    <foreignObject
+      x={getTooltipX(x, barWidth, width, chartWidth, 6)}
+      y={Math.max(0, y)}
+      width={width}
+      height={292}
+      className={styles.chartTooltipObject}
+    >
+      <div className={styles.chartTooltip}>
+        <div className={styles.tooltipDate}>{getWeekLabel(index, 54)}</div>
+        <div className={styles.tooltipRows}>
+          {rows
+            .slice()
+            .sort((a, b) => b.share - a.share)
+            .map((row) => (
+              <div className={styles.tooltipRow} key={row.id}>
+                <span className={styles.tooltipSwatch} style={{ background: row.color }} />
+                <span className={styles.tooltipName}>{row.label}</span>
+                <span className={styles.tooltipValue}>{formatShare(row.share)}</span>
+              </div>
+            ))}
+        </div>
+        <div className={styles.tooltipTotal}>
+          <span>Total</span>
+          <span>100%</span>
+        </div>
+      </div>
+    </foreignObject>
+  );
+}
+
 function buildUsageSeries() {
   return Array.from({ length: 54 }, (_, index) => {
     const progress = index / 53;
@@ -295,6 +417,31 @@ function MetricStackedChart({ items }: { items: OpenRouterMetricItem[] }) {
           const x = left + (plotWidth / (weekLabels.length - 1)) * index;
           return <text key={label} x={x} y={height - 9} textAnchor={index === 0 ? "start" : "middle"} className={styles.axisText}>{label}</text>;
         })}
+        {series.map((week, index) => {
+          const x = left + index * (barWidth + barGap);
+          const tooltipRows = week.map((part) => ({
+            id: `${part.rank}-${part.name}`,
+            label: part.name,
+            value: part.value,
+            share: part.value,
+            color: part.color || authorColors[part.author] || authorColors.others,
+          }));
+
+          return (
+            <g key={`tooltip-${index}`} className={styles.barGroup}>
+              <rect x={x} y={top} width={barWidth} height={plotHeight} className={styles.hoverTarget} />
+              <ShareTooltip
+                rows={tooltipRows}
+                index={index}
+                x={x}
+                y={top + 28}
+                barWidth={barWidth}
+                width={286}
+                chartWidth={width}
+              />
+            </g>
+          );
+        })}
       </svg>
     </div>
   );
@@ -352,6 +499,24 @@ function TopModelsChart() {
           const x = left + (plotWidth / (weekLabels.length - 1)) * index;
           return <text key={label} x={x} y={height - 9} textAnchor={index === 0 ? "start" : "middle"} className={styles.axisText}>{label}</text>;
         })}
+        {series.map((week, index) => {
+          const x = left + index * (barWidth + barGap);
+
+          return (
+            <g key={`tooltip-${index}`} className={styles.barGroup}>
+              <rect x={x} y={top} width={barWidth} height={plotHeight} className={styles.hoverTarget} />
+              <UsageTooltip
+                week={week}
+                index={index}
+                x={x}
+                y={top + 18}
+                barWidth={barWidth}
+                width={286}
+                chartWidth={width}
+              />
+            </g>
+          );
+        })}
       </svg>
     </div>
   );
@@ -399,6 +564,31 @@ function MarketShareChart() {
         {weekLabels.map((label, index) => {
           const x = left + (plotWidth / (weekLabels.length - 1)) * index;
           return <text key={label} x={x} y={height - 9} textAnchor={index === 0 ? "start" : "middle"} className={styles.axisText}>{label}</text>;
+        })}
+        {series.map((week, index) => {
+          const x = left + index * (barWidth + barGap);
+          const tooltipRows = week.map((part) => ({
+            id: part.author,
+            label: formatAuthor(part.author),
+            value: part.share,
+            share: part.share,
+            color: part.color,
+          }));
+
+          return (
+            <g key={`tooltip-${index}`} className={styles.barGroup}>
+              <rect x={x} y={top} width={barWidth} height={plotHeight} className={styles.hoverTarget} />
+              <ShareTooltip
+                rows={tooltipRows}
+                index={index}
+                x={x}
+                y={top + 28}
+                barWidth={barWidth}
+                width={286}
+                chartWidth={width}
+              />
+            </g>
+          );
         })}
       </svg>
     </div>

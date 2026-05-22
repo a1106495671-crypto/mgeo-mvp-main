@@ -266,6 +266,95 @@
   stroke-width: 1;
 }
 
+.barGroup {
+  outline: none;
+}
+
+.barGroup:hover rect:not(.hoverTarget) {
+  filter: saturate(1.12);
+}
+
+.hoverTarget {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.chartTooltipObject {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.barGroup:hover .chartTooltipObject {
+  opacity: 1;
+}
+
+.chartTooltip {
+  max-height: 286px;
+  color: #151922;
+  background: #fff;
+  border: 1px solid #e1e5eb;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+  font: 500 13px/1.25 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.tooltipDate {
+  display: inline-flex;
+  margin: 8px 8px 0;
+  padding: 5px 8px;
+  color: #fff;
+  background: #111318;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.tooltipRows {
+  padding: 8px 10px 6px;
+}
+
+.tooltipRow {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 27px;
+}
+
+.tooltipSwatch {
+  width: 4px;
+  height: 18px;
+  border-radius: 999px;
+}
+
+.tooltipName {
+  min-width: 0;
+  overflow: hidden;
+  color: #20242a;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tooltipValue {
+  color: #111318;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.tooltipTotal {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 10px 12px;
+  border-top: 1px solid #eceff4;
+  color: #20242a;
+  font-size: 13px;
+  font-weight: 650;
+}
+
 .rowsGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
