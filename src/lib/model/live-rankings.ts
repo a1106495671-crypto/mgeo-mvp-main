@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 
-import { authorColors, type MarketShareItem, type ModelRankItem, type TrendDirection } from "@/lib/model/rankings-snapshot";
+import { authorColors, type MarketShareItem, type ModelAppItem, type ModelRankItem, type TrendDirection } from "@/lib/model/rankings-snapshot";
 
 const UPSTREAM_RANKING_ORIGIN = `https://${["open", "router"].join("")}.ai`;
 const RANKINGS_URL = `${UPSTREAM_RANKING_ORIGIN}/rankings`;
@@ -8,11 +8,13 @@ const MODELS_URL = `${UPSTREAM_RANKING_ORIGIN}/api/frontend/models?fmt=cards`;
 const REVALIDATE_SECONDS = 5 * 60;
 
 export type RankingPeriod = "day" | "week" | "month" | "trending";
+export type AppRankingPeriod = "day" | "week" | "month";
 
 const fallbackActionIds = {
   modelChart: "00cb194ad7c33c8f52f4d016107f812f3837aef7f1",
   modelLeaderboard: "40824635c5eb77626bdf6795ffbf382c0862b321e1",
   authorTimeline: "005f2bf115b07532c905beef624e64d0f24ca89445",
+  appRankingsMap: "00b5731bd55aa0b6014b633cfc61b4990b7ea98676",
 };
 
 async function fetchWithRetry(input: RequestInfo | URL, init: RequestInit, attempts = 2) {
@@ -60,6 +62,19 @@ type RawLeaderboardRow = {
   total_native_tokens_cached?: number;
   change?: number | null;
 };
+
+type RawAppRankingRow = {
+  app_id?: number;
+  total_tokens?: string | number;
+  rank?: number;
+  app?: {
+    title?: string | null;
+    slug?: string | null;
+    origin_url?: string | null;
+  } | null;
+};
+
+type RawAppRankingsMap = Record<AppRankingPeriod, RawAppRankingRow[]>;
 
 export type ModelUsagePart = {
   id: string;
@@ -138,11 +153,13 @@ async function discoverActionIds() {
     actionIds.modelChart = extractActionId(chunk, "getModelRankingsChartDataCached") || actionIds.modelChart;
     actionIds.modelLeaderboard = extractActionId(chunk, "getModelRankingsCached") || actionIds.modelLeaderboard;
     actionIds.authorTimeline = extractActionId(chunk, "getWeeklyAuthorTokenTimelineCached") || actionIds.authorTimeline;
+    actionIds.appRankingsMap = extractActionId(chunk, "getAppRankingsMap") || actionIds.appRankingsMap;
 
     if (
       actionIds.modelChart !== fallbackActionIds.modelChart &&
       actionIds.modelLeaderboard !== fallbackActionIds.modelLeaderboard &&
-      actionIds.authorTimeline !== fallbackActionIds.authorTimeline
+      actionIds.authorTimeline !== fallbackActionIds.authorTimeline &&
+      actionIds.appRankingsMap !== fallbackActionIds.appRankingsMap
     ) {
       break;
     }
@@ -170,6 +187,32 @@ function parseActionResponse<T>(text: string): T {
   throw new Error("upstream ranking action response did not include parseable data");
 }
 
+function parseAppRankingsResponse(text: string): RawAppRankingsMap {
+  const lines = text.split(/\r?\n/);
+
+  for (const line of lines) {
+    const match = line.match(/^\d+:(.+)$/);
+    if (!match) continue;
+
+    try {
+      const parsed = JSON.parse(match[1]) as unknown;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "day" in parsed &&
+        "week" in parsed &&
+        "month" in parsed
+      ) {
+        return parsed as RawAppRankingsMap;
+      }
+    } catch {
+      // Ignore Flight metadata lines.
+    }
+  }
+
+  throw new Error("upstream app ranking response did not include parseable data");
+}
+
 async function callRankingAction<T>(actionId: string, args: unknown[]) {
   const response = await fetchWithRetry(RANKINGS_URL, {
     method: "POST",
@@ -188,6 +231,26 @@ async function callRankingAction<T>(actionId: string, args: unknown[]) {
   }
 
   return parseActionResponse<T>(await response.text());
+}
+
+async function callAppRankingsAction(actionId: string) {
+  const response = await fetchWithRetry(RANKINGS_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "text/plain;charset=UTF-8",
+      accept: "text/x-component",
+      "next-action": actionId,
+      "user-agent": "DongLuoji-MGEO/1.0 (+https://www.dongluoji.com/ranking)",
+    },
+    body: JSON.stringify([]),
+    next: { revalidate: REVALIDATE_SECONDS },
+  });
+
+  if (!response.ok) {
+    throw new Error(`upstream app ranking action failed: ${response.status}`);
+  }
+
+  return parseAppRankingsResponse(await response.text());
 }
 
 async function getModelMap() {
@@ -239,6 +302,19 @@ function formatTokenCount(tokens: number) {
 
   if (tokens >= 1_000_000_000) {
     return `${Math.round(tokens / 1_000_000_000)}B`;
+  }
+
+  return `${Math.round(tokens / 1_000_000)}M`;
+}
+
+function formatAppTokenCount(tokens: number) {
+  if (tokens >= 1_000_000_000_000) {
+    return `${(tokens / 1_000_000_000_000).toFixed(tokens >= 10_000_000_000_000 ? 1 : 2)}T`;
+  }
+
+  if (tokens >= 1_000_000_000) {
+    const value = tokens / 1_000_000_000;
+    return `${value >= 100 ? Math.round(value) : value.toFixed(1)}B`;
   }
 
   return `${Math.round(tokens / 1_000_000)}M`;
@@ -320,6 +396,54 @@ function transformAuthorTimeline(rows: RawChartPoint[]) {
   });
 }
 
+function getAppAuthor(row: RawAppRankingRow) {
+  const slug = row.app?.slug?.toLowerCase() || "";
+  const title = row.app?.title?.toLowerCase() || "";
+  const origin = row.app?.origin_url || "";
+
+  if (slug.includes("hermes")) return "nousresearch";
+  if (slug.includes("openclaw")) return "openclaw";
+  if (slug.includes("kilo")) return "kilocode";
+  if (slug.includes("claude")) return "anthropic";
+  if (slug.includes("css")) return "css";
+  if (slug.includes("descript")) return "descript";
+  if (slug === "pi" || title === "pi") return "inflection";
+  if (slug.includes("janitor")) return "janitorai";
+  if (slug.includes("isekai")) return "isekai";
+  if (slug.includes("roo")) return "roocode";
+  if (slug.includes("cline")) return "cline";
+  if (slug.includes("pioneer")) return "pioneer";
+
+  try {
+    return new URL(origin).hostname.replace(/^www\./, "").split(".")[0] || "others";
+  } catch {
+    return "others";
+  }
+}
+
+function transformAppRankings(rows: RawAppRankingRow[]) {
+  return rows
+    .map((row) => {
+      const tokens = Number(row.total_tokens || 0);
+      return { row, tokens };
+    })
+    .filter((item) => item.tokens > 0)
+    .sort((a, b) => b.tokens - a.tokens)
+    .slice(0, 10)
+    .map((item, index): ModelAppItem => {
+      const author = getAppAuthor(item.row);
+      return {
+        rank: index + 1,
+        name: item.row.app?.title || item.row.app?.slug || `App ${item.row.app_id || index + 1}`,
+        author,
+        tokens: formatAppTokenCount(item.tokens),
+        tokenValueB: item.tokens / 1_000_000_000,
+        change: 0,
+        direction: "flat",
+      };
+    });
+}
+
 async function fetchLiveModelRankings(period: RankingPeriod = "week"): Promise<LiveModelRankings | null> {
   try {
     const [modelMap, actionIds] = await Promise.all([
@@ -374,5 +498,27 @@ async function fetchLiveModelLeaderboard(period: RankingPeriod) {
 }
 
 export const getLiveModelLeaderboard = unstable_cache(fetchLiveModelLeaderboard, ["mgeo-live-leaderboard-v1"], {
+  revalidate: REVALIDATE_SECONDS,
+});
+
+async function fetchLiveAppRankings(period: AppRankingPeriod) {
+  try {
+    const rankingsMap = await callAppRankingsAction(fallbackActionIds.appRankingsMap).catch(async () => {
+      const actionIds = await discoverActionIds();
+      return callAppRankingsAction(actionIds.appRankingsMap);
+    });
+
+    return {
+      period,
+      apps: transformAppRankings(rankingsMap[period] || []),
+      updatedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("Failed to fetch live app rankings", error);
+    return null;
+  }
+}
+
+export const getLiveAppRankings = unstable_cache(fetchLiveAppRankings, ["mgeo-live-app-rankings-v1"], {
   revalidate: REVALIDATE_SECONDS,
 });

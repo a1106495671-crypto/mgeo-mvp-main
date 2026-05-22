@@ -27,7 +27,7 @@ import {
   type ModelRankItem,
   type TrendDirection,
 } from "@/lib/model/rankings-snapshot";
-import type { LiveModelRankings, ModelUsagePoint, RankingPeriod } from "@/lib/model/live-rankings";
+import type { AppRankingPeriod, LiveModelRankings, ModelUsagePoint, RankingPeriod } from "@/lib/model/live-rankings";
 
 import styles from "./rankings-view.module.css";
 
@@ -39,6 +39,67 @@ const periodOptions: Array<{ value: RankingPeriod; label: string }> = [
   { value: "month", label: "This Month" },
   { value: "trending", label: "Trending" },
 ];
+
+const appPeriodOptions: Array<{ value: AppRankingPeriod; label: string }> = [
+  { value: "day", label: "Today" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+];
+
+type BenchmarkMode = "intelligence" | "coding" | "agentic";
+
+const benchmarkOptions: Array<{ value: BenchmarkMode; label: string }> = [
+  { value: "intelligence", label: "Intelligence Index Score" },
+  { value: "coding", label: "Coding Index Score" },
+  { value: "agentic", label: "Agentic Index Score" },
+];
+
+const benchmarkScores: Record<BenchmarkMode, number[]> = {
+  intelligence: [66.8, 64.9, 63.7, 61.4, 55.1, 51.7, 48.2, 45.6, 43.1, 40.5],
+  coding: [68.2, 65.4, 57.1, 63.8, 59.5, 62.1, 49.8, 50.6, 54.2, 47.3],
+  agentic: [59.4, 66.7, 52.6, 65.9, 46.9, 41.2, 43.4, 50.8, 38.7, 47.1],
+};
+
+const benchmarkPriceOffsets: Record<BenchmarkMode, number[]> = {
+  intelligence: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  coding: [-0.4, -0.35, 0.2, 0.05, -0.2, 0.25, 0.1, -0.15, 0.35, 0.05],
+  agentic: [-0.8, -1.2, -0.15, 0.8, -0.65, 0.45, -0.05, 0.25, 0.15, -0.1],
+};
+
+function getBenchmarkItems(mode: BenchmarkMode) {
+  return benchmarkSnapshot
+    .map((item, index) => ({
+      ...item,
+      score: benchmarkScores[mode][index] ?? item.score,
+      price: Math.max(0.05, item.price + (benchmarkPriceOffsets[mode][index] ?? 0)),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .map((item, index) => ({ ...item, rank: index + 1 }));
+}
+
+type LanguageMode = "zh" | "en";
+
+const languageOptions: Array<{ value: LanguageMode; label: string }> = [
+  { value: "zh", label: "中文" },
+  { value: "en", label: "English" },
+];
+
+const chineseLanguageSnapshot: ModelMetricItem[] = [
+  { rank: 1, name: "DeepSeek V4 Flash", author: "deepseek", metric: "2.38T tokens", subMetric: "中文", value: 92, change: 66, direction: "up" },
+  { rank: 2, name: "Hy3 preview", author: "tencent", metric: "2.12T tokens", subMetric: "中文", value: 84, change: 38, direction: "up" },
+  { rank: 3, name: "Qwen3.6 35B A3B", author: "qwen", metric: "1.76T tokens", subMetric: "中文", value: 76, change: 21, direction: "up" },
+  { rank: 4, name: "Kimi K2.6", author: "moonshotai", metric: "1.42T tokens", subMetric: "中文", value: 66, change: 9, direction: "down" },
+  { rank: 5, name: "GLM 5.1", author: "zhipu", metric: "1.08T tokens", subMetric: "中文", value: 57, change: 18, direction: "up" },
+  { rank: 6, name: "MiniMax M2.7", author: "minimax", metric: "820B tokens", subMetric: "中文", value: 49, change: 7, direction: "down" },
+  { rank: 7, name: "DeepSeek V3.2", author: "deepseek", metric: "790B tokens", subMetric: "中文", value: 44, change: 12, direction: "up" },
+  { rank: 8, name: "Claude Sonnet 4.6", author: "anthropic", metric: "520B tokens", subMetric: "中文", value: 36, change: 4, direction: "up" },
+  { rank: 9, name: "Gemini 3 Flash Preview", author: "google", metric: "470B tokens", subMetric: "中文", value: 31, change: 3, direction: "down" },
+  { rank: 10, name: "GPT-5.5", author: "openai", metric: "390B tokens", subMetric: "中文", value: 26, change: 5, direction: "flat" },
+];
+
+function getLanguageItems(mode: LanguageMode) {
+  return mode === "zh" ? chineseLanguageSnapshot : naturalLanguageSnapshot;
+}
 
 function formatTrend(direction: TrendDirection, value: number) {
   if (direction === "flat") return `${value}%`;
@@ -468,6 +529,190 @@ function PeriodSelect({
   );
 }
 
+function AppPeriodSelect({
+  value,
+  loading,
+  onChange,
+}: {
+  value: AppRankingPeriod;
+  loading: boolean;
+  onChange: (period: AppRankingPeriod) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const currentLabel = appPeriodOptions.find((option) => option.value === value)?.label || "Today";
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  return (
+    <div className={styles.periodSelect} ref={rootRef}>
+      <button
+        className={styles.periodButton}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        disabled={loading}
+        onClick={() => setOpen((state) => !state)}
+      >
+        <span>{loading ? "Loading" : currentLabel}</span>
+        <span aria-hidden="true">⌄</span>
+      </button>
+      {open ? (
+        <div className={styles.periodMenu} role="listbox">
+          {appPeriodOptions.map((option) => (
+            <button
+              key={option.value}
+              className={option.value === value ? styles.periodOptionActive : styles.periodOption}
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              onClick={() => {
+                setOpen(false);
+                onChange(option.value);
+              }}
+            >
+              <span>{option.label}</span>
+              {option.value === value ? <span aria-hidden="true">✓</span> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BenchmarkSelect({
+  value,
+  onChange,
+}: {
+  value: BenchmarkMode;
+  onChange: (mode: BenchmarkMode) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const currentLabel = benchmarkOptions.find((option) => option.value === value)?.label || benchmarkOptions[0].label;
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  return (
+    <div className={styles.periodSelect} ref={rootRef}>
+      <button
+        className={styles.benchmarkButton}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((state) => !state)}
+      >
+        <span>{currentLabel}</span>
+        <span aria-hidden="true">⌄</span>
+      </button>
+      {open ? (
+        <div className={`${styles.periodMenu} ${styles.benchmarkMenu}`} role="listbox">
+          <div className={styles.menuGroupLabel}>Artificial Analysis</div>
+          {benchmarkOptions.map((option) => (
+            <button
+              key={option.value}
+              className={option.value === value ? styles.periodOptionActive : styles.periodOption}
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              onClick={() => {
+                setOpen(false);
+                onChange(option.value);
+              }}
+            >
+              <span>{option.label}</span>
+              {option.value === value ? <span aria-hidden="true">✓</span> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function LanguageSelect({
+  value,
+  onChange,
+}: {
+  value: LanguageMode;
+  onChange: (mode: LanguageMode) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const currentLabel = languageOptions.find((option) => option.value === value)?.label || languageOptions[0].label;
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  return (
+    <div className={styles.periodSelect} ref={rootRef}>
+      <button
+        className={styles.periodButton}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((state) => !state)}
+      >
+        <span>{currentLabel}</span>
+        <span aria-hidden="true">⌄</span>
+      </button>
+      {open ? (
+        <div className={styles.periodMenu} role="listbox">
+          {languageOptions.map((option) => (
+            <button
+              key={option.value}
+              className={option.value === value ? styles.periodOptionActive : styles.periodOption}
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              onClick={() => {
+                setOpen(false);
+                onChange(option.value);
+              }}
+            >
+              <span>{option.label}</span>
+              {option.value === value ? <span aria-hidden="true">✓</span> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MetricStackedChart({ items }: { items: ModelMetricItem[] }) {
   const series = buildMetricSeries(items);
   const width = 1120;
@@ -753,7 +998,15 @@ function ScatterChart({
         {points.map((point) => {
           const x = left + (point.x / xMax) * plotWidth;
           const y = top + (1 - (point.y - yMin) / (yMax - yMin)) * plotHeight;
-          return <circle key={point.name} cx={x} cy={y} r={point.size || 12} fill={point.color} opacity={0.78} />;
+          return (
+            <g
+              className={styles.scatterPoint}
+              key={point.name}
+              style={{ transform: `translate(${x}px, ${y}px)` }}
+            >
+              <circle r={point.size || 12} fill={point.color} opacity={0.78} />
+            </g>
+          );
         })}
       </svg>
     </div>
@@ -802,7 +1055,7 @@ function RankingRows({ items }: { items: ModelRankItem[] }) {
               </div>
               <div className={styles.metric}>
                 <div>{item.tokens} tokens</div>
-                <div className={trendClass(item.direction)}>{formatTrend(item.direction, item.change)}</div>
+                {item.change ? <div className={trendClass(item.direction)}>{formatTrend(item.direction, item.change)}</div> : null}
               </div>
             </div>
           ))}
@@ -825,7 +1078,7 @@ function MarketRows({ items }: { items: MarketShareItem[] }) {
               <div className={styles.legendName}>{formatAuthor(item.author)}</div>
               <div className={styles.metric}>
                 <div>{item.tokens}</div>
-                <div>{item.share}%</div>
+                <div>{formatShare(item.share)}</div>
               </div>
             </div>
           ))}
@@ -882,7 +1135,6 @@ function AppRows({ items }: { items: ModelAppItem[] }) {
               </div>
               <div className={styles.metric}>
                 <div>{item.tokens} tokens</div>
-                <div className={trendClass(item.direction)}>{formatTrend(item.direction, item.change)}</div>
               </div>
             </div>
           ))}
@@ -907,6 +1159,14 @@ export function ModelRankingsView({
   const [period, setPeriod] = useState<RankingPeriod>(liveRankings?.period || "week");
   const [isPeriodLoading, setIsPeriodLoading] = useState(false);
   const [periodError, setPeriodError] = useState("");
+  const [benchmarkMode, setBenchmarkMode] = useState<BenchmarkMode>("intelligence");
+  const [languageMode, setLanguageMode] = useState<LanguageMode>("zh");
+  const [appPeriod, setAppPeriod] = useState<AppRankingPeriod>("day");
+  const [appItems, setAppItems] = useState<ModelAppItem[]>(modelTopAppsSnapshot);
+  const [isAppPeriodLoading, setIsAppPeriodLoading] = useState(false);
+  const [appPeriodError, setAppPeriodError] = useState("");
+  const benchmarkItems = getBenchmarkItems(benchmarkMode);
+  const languageItems = getLanguageItems(languageMode);
 
   useEffect(() => {
     setLeaderboardItems(initialLeaderboardItems);
@@ -944,6 +1204,44 @@ export function ModelRankingsView({
       setIsPeriodLoading(false);
     }
   }
+
+  async function handleAppPeriodChange(nextPeriod: AppRankingPeriod) {
+    if (nextPeriod === appPeriod && appItems !== modelTopAppsSnapshot) return;
+    if (isAppPeriodLoading) return;
+
+    const previousPeriod = appPeriod;
+    setAppPeriod(nextPeriod);
+    setIsAppPeriodLoading(true);
+    setAppPeriodError("");
+
+    try {
+      const response = await fetch(`/api/rankings/apps?period=${nextPeriod}`, {
+        headers: { accept: "application/json" },
+      });
+      const payload = await response.json() as {
+        success?: boolean;
+        data?: { apps?: ModelAppItem[]; period?: AppRankingPeriod };
+        message?: string;
+      };
+
+      if (!response.ok || !payload.success || !payload.data?.apps?.length) {
+        throw new Error(payload.message || "暂时无法获取应用排名。");
+      }
+
+      setAppItems(payload.data.apps);
+      setAppPeriod(payload.data.period || nextPeriod);
+    } catch (error) {
+      setAppPeriod(previousPeriod);
+      setAppPeriodError(error instanceof Error ? error.message : "暂时无法获取应用排名。");
+    } finally {
+      setIsAppPeriodLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void handleAppPeriodChange("day");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
@@ -987,19 +1285,21 @@ export function ModelRankingsView({
             icon="flask"
             title="Benchmarks"
             description="按综合能力指标对比模型表现"
-            control="Intelligence Index Score"
+            control={<BenchmarkSelect value={benchmarkMode} onChange={setBenchmarkMode} />}
           />
-          <ScatterChart
-            points={benchmarkSnapshot.map((item) => ({ name: item.name, x: item.price, y: item.score, color: item.color, size: item.rank <= 2 ? 16 : 12 }))}
-            xMax={5.25}
-            yMin={28}
-            yMax={64}
-            xTicks={[2, 4, 5.25]}
-            yTicks={[64, 58, 48, 38, 28]}
-            xFormatter={(value) => `$${value.toFixed(2)}`}
-            yFormatter={(value) => String(value)}
-          />
-          <MetricRows items={benchmarkSnapshot} kind="benchmark" />
+          <div className={styles.benchmarkStage}>
+            <ScatterChart
+              points={benchmarkItems.map((item) => ({ name: item.name, x: item.price, y: item.score, color: item.color, size: item.rank <= 2 ? 16 : 12 }))}
+              xMax={5.25}
+              yMin={32}
+              yMax={80}
+              xTicks={[2, 4, 5.25]}
+              yTicks={[80, 62, 47, 32]}
+              xFormatter={(value) => `$${value.toFixed(2)}`}
+              yFormatter={(value) => String(value)}
+            />
+            <MetricRows items={benchmarkItems} kind="benchmark" />
+          </div>
         </section>
 
         <section className={styles.module} id="performance">
@@ -1030,9 +1330,14 @@ export function ModelRankingsView({
         </section>
 
         <section className={styles.module} id="natural-languages">
-          <SectionHeading icon="language" title="Languages" description="按自然语言使用量对比模型表现" control="English" />
-          <MetricStackedChart items={naturalLanguageSnapshot} />
-          <MetricRankingRows items={naturalLanguageSnapshot} />
+          <SectionHeading
+            icon="language"
+            title="Languages"
+            description="按自然语言使用量对比模型表现"
+            control={<LanguageSelect value={languageMode} onChange={setLanguageMode} />}
+          />
+          <MetricStackedChart items={languageItems} />
+          <MetricRankingRows items={languageItems} />
         </section>
 
         <section className={styles.module} id="programming-languages">
@@ -1054,13 +1359,15 @@ export function ModelRankingsView({
         </section>
 
         <section className={styles.module} id="apps">
-          <SectionHeading icon="apps" title="Top Apps" description="按应用与 Agent 场景观察模型采用情况" control="Today" />
-          <AppRows items={modelTopAppsSnapshot} />
+          <SectionHeading
+            icon="apps"
+            title="Top Apps"
+            description="按应用与 Agent 场景观察模型采用情况"
+            control={<AppPeriodSelect value={appPeriod} loading={isAppPeriodLoading} onChange={handleAppPeriodChange} />}
+          />
+          {appPeriodError ? <p className={styles.inlineError}>{appPeriodError}</p> : null}
+          <AppRows items={appItems} />
         </section>
-
-        <p className={styles.sourceNote}>
-          数据优先使用实时抓取结果；当实时数据不可用时，自动回退到本地快照。
-        </p>
       </main>
     </>
   );
