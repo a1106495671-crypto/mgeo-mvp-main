@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import {
-  OPENROUTER_RANKING_SOURCE,
   authorColors,
   audioRankingsSnapshot,
   benchmarkSnapshot,
@@ -11,8 +10,8 @@ import {
   imageRankingsSnapshot,
   marketShareSnapshot,
   naturalLanguageSnapshot,
-  openRouterTopAppsSnapshot,
-  openRouterWeeklySnapshot,
+  modelTopAppsSnapshot,
+  modelWeeklySnapshot,
   programmingLanguageSnapshot,
   topModelAuthors,
   toolCallsSnapshot,
@@ -20,12 +19,12 @@ import {
   type BenchmarkItem,
   type FastestModelItem,
   type MarketShareItem,
-  type OpenRouterAppItem,
-  type OpenRouterMetricItem,
-  type OpenRouterRankItem,
+  type ModelAppItem,
+  type ModelMetricItem,
+  type ModelRankItem,
   type TrendDirection,
-} from "@/lib/openrouter/rankings-snapshot";
-import type { LiveOpenRouterRankings, OpenRouterUsagePoint } from "@/lib/openrouter/live-rankings";
+} from "@/lib/model/rankings-snapshot";
+import type { LiveModelRankings, ModelUsagePoint } from "@/lib/model/live-rankings";
 
 import styles from "./rankings-view.module.css";
 
@@ -48,6 +47,7 @@ function chunk<T>(items: T[]) {
 }
 
 function formatAuthor(author: string) {
+  if (author === "mgeo") return "MGEO";
   return author.replace("xai", "x-ai");
 }
 
@@ -84,7 +84,7 @@ function UsageTooltip({
   width,
   chartWidth,
 }: {
-  week: OpenRouterUsagePoint;
+  week: ModelUsagePoint;
   index: number;
   x: number;
   y: number;
@@ -180,7 +180,7 @@ function ShareTooltip({
 }
 
 function buildUsageSeries() {
-  return Array.from({ length: 54 }, (_, index): OpenRouterUsagePoint => {
+  return Array.from({ length: 54 }, (_, index): ModelUsagePoint => {
     const progress = index / 53;
     const ramp = 1.4 + progress * 5.6 + Math.max(0, progress - 0.64) * 44;
     const pulse = Math.sin(index * 0.61) * 0.7 + Math.cos(index * 0.17) * 0.45;
@@ -206,7 +206,7 @@ function buildUsageSeries() {
   });
 }
 
-function buildAxisLabels(series: OpenRouterUsagePoint[]) {
+function buildAxisLabels(series: ModelUsagePoint[]) {
   if (!series.some((item) => item.date)) return buildReadableAxisLabels(weekLabels);
 
   return buildReadableAxisLabels(weekLabels.map((_, index) => {
@@ -237,7 +237,7 @@ function buildMarketSeries() {
   });
 }
 
-function buildMetricSeries(items: OpenRouterMetricItem[]) {
+function buildMetricSeries(items: ModelMetricItem[]) {
   const chartItems = items.slice(0, 8);
 
   return Array.from({ length: 54 }, (_, index) => {
@@ -259,13 +259,13 @@ function buildMetricSeries(items: OpenRouterMetricItem[]) {
   });
 }
 
-function OpenRouterRankingsHeader() {
+function ModelRankingsHeader() {
   return (
     <header className={styles.header}>
       <div className={styles.headerInner}>
         <Link href="/" className={styles.brand}>
           <span className={styles.brandMark} />
-          <span>OpenRouter Rankings</span>
+          <span>Model Rankings</span>
         </Link>
         <div className={styles.searchBox}>
           <span className={styles.searchIcon}>⌕</span>
@@ -276,16 +276,16 @@ function OpenRouterRankingsHeader() {
           {navItems.map((item) => (
             <a
               key={item}
-              href={item === "Rankings" ? OPENROUTER_RANKING_SOURCE : "#"}
+              href={item === "Rankings" ? "/ranking" : "#"}
               className={item === "Rankings" ? styles.navActive : undefined}
             >
               {item}
             </a>
           ))}
         </nav>
-        <a className={styles.signup} href={OPENROUTER_RANKING_SOURCE} target="_blank" rel="noreferrer">
-          Source
-        </a>
+        <Link className={styles.signup} href="/ranking">
+          MGEO
+        </Link>
       </div>
     </header>
   );
@@ -391,7 +391,7 @@ function SectionHeading({
   );
 }
 
-function MetricStackedChart({ items }: { items: OpenRouterMetricItem[] }) {
+function MetricStackedChart({ items }: { items: ModelMetricItem[] }) {
   const series = buildMetricSeries(items);
   const width = 1120;
   const height = 360;
@@ -472,7 +472,7 @@ function MetricStackedChart({ items }: { items: OpenRouterMetricItem[] }) {
   );
 }
 
-function TopModelsChart({ series: liveSeries }: { series?: OpenRouterUsagePoint[] }) {
+function TopModelsChart({ series: liveSeries }: { series?: ModelUsagePoint[] }) {
   const series = liveSeries?.length ? liveSeries : buildUsageSeries();
   const width = 1120;
   const height = 360;
@@ -683,7 +683,7 @@ function ScatterChart({
   );
 }
 
-function MetricRankingRows({ items }: { items: OpenRouterMetricItem[] }) {
+function MetricRankingRows({ items }: { items: ModelMetricItem[] }) {
   const [left, right] = chunk(items);
   return (
     <div className={styles.rowsGrid}>
@@ -709,7 +709,7 @@ function MetricRankingRows({ items }: { items: OpenRouterMetricItem[] }) {
   );
 }
 
-function RankingRows({ items }: { items: OpenRouterRankItem[] }) {
+function RankingRows({ items }: { items: ModelRankItem[] }) {
   const [left, right] = chunk(items);
   return (
     <div className={styles.rowsGrid}>
@@ -789,7 +789,7 @@ function MetricRows({ items, kind }: { items: Array<BenchmarkItem | FastestModel
   );
 }
 
-function AppRows({ items }: { items: OpenRouterAppItem[] }) {
+function AppRows({ items }: { items: ModelAppItem[] }) {
   const [left, right] = chunk(items);
   return (
     <div className={styles.rowsGrid}>
@@ -815,45 +815,45 @@ function AppRows({ items }: { items: OpenRouterAppItem[] }) {
   );
 }
 
-export function OpenRouterRankingsView({
+export function ModelRankingsView({
   showHeader = true,
   liveRankings,
 }: {
   showHeader?: boolean;
-  liveRankings?: LiveOpenRouterRankings | null;
+  liveRankings?: LiveModelRankings | null;
 }) {
   const topModelsSeries = liveRankings?.topModelsSeries;
-  const leaderboardItems = liveRankings?.leaderboard?.length ? liveRankings.leaderboard : openRouterWeeklySnapshot;
+  const leaderboardItems = liveRankings?.leaderboard?.length ? liveRankings.leaderboard : modelWeeklySnapshot;
   const marketSeries = liveRankings?.marketShareSeries?.length ? liveRankings.marketShareSeries : undefined;
   const marketItems = liveRankings?.marketShareItems?.length ? liveRankings.marketShareItems : marketShareSnapshot;
 
   return (
     <>
-      {showHeader ? <OpenRouterRankingsHeader /> : null}
+      {showHeader ? <ModelRankingsHeader /> : null}
       <main className={styles.page}>
         <section className={styles.hero}>
           <h1>AI Model Rankings</h1>
-          <p>Based on benchmarks and real usage data from millions of users accessing models through OpenRouter.</p>
+          <p>基于模型热度、真实调用趋势与能力指标，追踪主流 AI 模型的市场表现。</p>
         </section>
 
         <section className={styles.module} id="top-models">
-          <SectionHeading icon="bars" title="Top Models" description="Weekly usage of models across OpenRouter" />
+          <SectionHeading icon="bars" title="Top Models" description="主流模型每周使用趋势" />
           <TopModelsChart series={topModelsSeries} />
         </section>
 
         <section className={styles.module} id="leaderboard">
-          <SectionHeading icon="cup" title="LLM Leaderboard" description="Compare the most popular models on OpenRouter" control="This Week" />
+          <SectionHeading icon="cup" title="LLM Leaderboard" description="对比当前最受关注的大模型" control="This Week" />
           <RankingRows items={leaderboardItems} />
         </section>
 
         <section className={styles.module} id="market-share">
-          <SectionHeading icon="chart" title="Market Share" description="Compare OpenRouter token share by model author" />
+          <SectionHeading icon="chart" title="Market Share" description="按模型厂商对比 token 份额" />
           <MarketShareChart series={marketSeries} />
           <MarketRows items={marketItems} />
         </section>
 
         <section className={styles.module} id="tools">
-          <SectionHeading icon="tool" title="Tool Calls" description="Tool usage across models on OpenRouter" />
+          <SectionHeading icon="tool" title="Tool Calls" description="对比不同模型的工具调用使用量" />
           <MetricStackedChart items={toolCallsSnapshot} />
           <MetricRankingRows items={toolCallsSnapshot} />
         </section>
@@ -862,7 +862,7 @@ export function OpenRouterRankingsView({
           <SectionHeading
             icon="flask"
             title="Benchmarks"
-            description="Top models on OpenRouter by Artificial Analysis Intelligence Index"
+            description="按综合能力指标对比模型表现"
             control="Intelligence Index Score"
           />
           <ScatterChart
@@ -879,7 +879,7 @@ export function OpenRouterRankingsView({
         </section>
 
         <section className={styles.module} id="performance">
-          <SectionHeading icon="bolt" title="Fastest models" description="Compare model performance across providers on OpenRouter" control="Highest throughput" />
+          <SectionHeading icon="bolt" title="Fastest models" description="对比不同服务商下的模型吞吐表现" control="Highest throughput" />
           <ScatterChart
             points={fastestModelsSnapshot.map((item) => ({ name: item.name, x: item.price, y: item.speed, color: item.color, size: item.rank <= 3 ? 14 : 10 }))}
             xMax={2.36}
@@ -894,48 +894,48 @@ export function OpenRouterRankingsView({
         </section>
 
         <section className={styles.module} id="context-length">
-          <SectionHeading icon="context" title="Context Length" description="Compare model usage by context window on OpenRouter" control="10K" />
+          <SectionHeading icon="context" title="Context Length" description="按上下文窗口对比模型使用情况" control="10K" />
           <MetricStackedChart items={contextLengthSnapshot} />
           <MetricRankingRows items={contextLengthSnapshot} />
         </section>
 
         <section className={styles.module} id="categories">
-          <SectionHeading icon="tag" title="Categories" description="Compare models by usecase on OpenRouter" control="Programming" />
+          <SectionHeading icon="tag" title="Categories" description="按使用场景对比模型表现" control="Programming" />
           <MetricStackedChart items={categoryRankingsSnapshot} />
           <MetricRankingRows items={categoryRankingsSnapshot} />
         </section>
 
         <section className={styles.module} id="natural-languages">
-          <SectionHeading icon="language" title="Languages" description="Compare models by natural language on OpenRouter" control="English" />
+          <SectionHeading icon="language" title="Languages" description="按自然语言使用量对比模型表现" control="English" />
           <MetricStackedChart items={naturalLanguageSnapshot} />
           <MetricRankingRows items={naturalLanguageSnapshot} />
         </section>
 
         <section className={styles.module} id="programming-languages">
-          <SectionHeading icon="code" title="Programming" description="Compare models by programming language on OpenRouter" control="Python" />
+          <SectionHeading icon="code" title="Programming" description="按编程语言使用量对比模型表现" control="Python" />
           <MetricStackedChart items={programmingLanguageSnapshot} />
           <MetricRankingRows items={programmingLanguageSnapshot} />
         </section>
 
         <section className={styles.module} id="images">
-          <SectionHeading icon="image" title="Images" description="Total images processed on OpenRouter" />
+          <SectionHeading icon="image" title="Images" description="模型处理图像任务的累计趋势" />
           <MetricStackedChart items={imageRankingsSnapshot} />
           <MetricRankingRows items={imageRankingsSnapshot} />
         </section>
 
         <section className={styles.module} id="audio">
-          <SectionHeading icon="audio" title="Audio Input" description="Total audio prompts processed on OpenRouter" />
+          <SectionHeading icon="audio" title="Audio Input" description="模型处理音频输入的累计趋势" />
           <MetricStackedChart items={audioRankingsSnapshot} />
           <MetricRankingRows items={audioRankingsSnapshot} />
         </section>
 
         <section className={styles.module} id="apps">
-          <SectionHeading icon="apps" title="Top Apps" description="Explore apps and agents opting into usage tracking by category" control="Today" />
-          <AppRows items={openRouterTopAppsSnapshot} />
+          <SectionHeading icon="apps" title="Top Apps" description="按应用与 Agent 场景观察模型采用情况" control="Today" />
+          <AppRows items={modelTopAppsSnapshot} />
         </section>
 
         <p className={styles.sourceNote}>
-          Data source: OpenRouter Rankings. This local page is a product-study mirror of the Rankings column only, using a curated snapshot for testing.
+          数据优先使用实时抓取结果；当实时数据不可用时，自动回退到本地快照。
         </p>
       </main>
     </>

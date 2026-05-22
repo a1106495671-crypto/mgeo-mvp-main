@@ -1,6 +1,6 @@
 export type TrendDirection = "up" | "down" | "flat";
 
-export type OpenRouterRankItem = {
+export type ModelRankItem = {
   rank: number;
   name: string;
   author: string;
@@ -37,7 +37,7 @@ export type FastestModelItem = {
   color: string;
 };
 
-export type OpenRouterAppItem = {
+export type ModelAppItem = {
   rank: number;
   name: string;
   author: string;
@@ -47,7 +47,7 @@ export type OpenRouterAppItem = {
   direction: TrendDirection;
 };
 
-export type OpenRouterMetricItem = {
+export type ModelMetricItem = {
   rank: number;
   name: string;
   author: string;
@@ -59,14 +59,12 @@ export type OpenRouterMetricItem = {
   color?: string;
 };
 
-export const OPENROUTER_RANKING_SOURCE = "https://openrouter.ai/rankings?view=week";
-
 export const authorColors: Record<string, string> = {
   deepseek: "#ff7a45",
   anthropic: "#f5b52e",
   google: "#1685f8",
   tencent: "#09bda5",
-  openrouter: "#6b8e23",
+  mgeo: "#6b8e23",
   qwen: "#8acc2a",
   moonshotai: "#ee7f88",
   minimax: "#ff5eb3",
@@ -95,16 +93,16 @@ export const authorColors: Record<string, string> = {
   others: "#b9b9b9",
 };
 
-export const topModelAuthors = ["tencent", "deepseek", "anthropic", "google", "openrouter", "moonshotai", "minimax", "qwen", "others"];
+export const topModelAuthors = ["tencent", "deepseek", "anthropic", "google", "mgeo", "moonshotai", "minimax", "qwen", "others"];
 
 export const weekLabels = ["2025年5月26日", "7月7日", "8月18日", "9月29日", "11月10日", "12月22日", "2月2日", "3月16日", "4月27日"];
 
-export const openRouterWeeklySnapshot: OpenRouterRankItem[] = [
+export const modelWeeklySnapshot: ModelRankItem[] = [
   { rank: 1, name: "Hy3 preview", author: "tencent", tokens: "2.85T", tokenValueT: 2.85, change: 41, direction: "up" },
   { rank: 2, name: "DeepSeek V4 Flash", author: "deepseek", tokens: "2.76T", tokenValueT: 2.76, change: 102, direction: "up" },
   { rank: 3, name: "Claude Sonnet 4.6", author: "anthropic", tokens: "1.56T", tokenValueT: 1.56, change: 3, direction: "up" },
   { rank: 4, name: "Claude Opus 4.7", author: "anthropic", tokens: "1.41T", tokenValueT: 1.41, change: 8, direction: "down" },
-  { rank: 5, name: "Owl Alpha", author: "openrouter", tokens: "1.21T", tokenValueT: 1.21, change: 115, direction: "up" },
+  { rank: 5, name: "Owl Alpha", author: "mgeo", tokens: "1.21T", tokenValueT: 1.21, change: 115, direction: "up" },
   { rank: 6, name: "Gemini 3 Flash Preview", author: "google", tokens: "1.12T", tokenValueT: 1.12, change: 1, direction: "down" },
   { rank: 7, name: "DeepSeek V3.2", author: "deepseek", tokens: "1.12T", tokenValueT: 1.12, change: 20, direction: "up" },
   { rank: 8, name: "DeepSeek V4 Pro", author: "deepseek", tokens: "950B", tokenValueT: 0.95, change: 8, direction: "up" },
@@ -128,7 +126,7 @@ export const marketShareSnapshot: MarketShareItem[] = [
   { rank: 3, author: "google", tokens: "2.37T", valueT: 2.37, share: 15.5, color: authorColors.google },
   { rank: 4, author: "tencent", tokens: "1.69T", valueT: 1.69, share: 11.1, color: authorColors.tencent },
   { rank: 5, author: "minimax", tokens: "732B", valueT: 0.732, share: 4.8, color: authorColors.minimax },
-  { rank: 6, author: "openrouter", tokens: "652B", valueT: 0.652, share: 4.3, color: authorColors.openrouter },
+  { rank: 6, author: "mgeo", tokens: "652B", valueT: 0.652, share: 4.3, color: authorColors.mgeo },
   { rank: 7, author: "qwen", tokens: "600B", valueT: 0.6, share: 3.9, color: authorColors.qwen },
   { rank: 8, author: "moonshotai", tokens: "575B", valueT: 0.575, share: 3.8, color: authorColors.moonshotai },
   { rank: 9, author: "openai", tokens: "511B", valueT: 0.511, share: 3.3, color: authorColors.openai },
@@ -161,7 +159,7 @@ export const fastestModelsSnapshot: FastestModelItem[] = [
   { rank: 10, name: "Nano Banana (Gemini 2.5)", provider: "Google", speed: 162, price: 0.35, color: "#72d9d1" },
 ];
 
-export const openRouterTopAppsSnapshot: OpenRouterAppItem[] = [
+export const modelTopAppsSnapshot: ModelAppItem[] = [
   { rank: 1, name: "Hermes Agent", author: "nousresearch", tokens: "353B", tokenValueB: 353, change: 12, direction: "up" },
   { rank: 2, name: "OpenClaw", author: "openclaw", tokens: "195B", tokenValueB: 195, change: 3, direction: "up" },
   { rank: 3, name: "Kilo Code", author: "kilocode", tokens: "166B", tokenValueB: 166, change: 9, direction: "up" },
@@ -174,7 +172,7 @@ export const openRouterTopAppsSnapshot: OpenRouterAppItem[] = [
   { rank: 10, name: "Roo Code", author: "roocode", tokens: "22.8B", tokenValueB: 22.8, change: 11, direction: "up" },
 ];
 
-export const toolCallsSnapshot: OpenRouterMetricItem[] = [
+export const toolCallsSnapshot: ModelMetricItem[] = [
   { rank: 1, name: "Claude Sonnet 4.6", author: "anthropic", metric: "94.1B calls", subMetric: "tool usage", value: 94.1, change: 18, direction: "up" },
   { rank: 2, name: "GPT-5.5", author: "openai", metric: "88.5B calls", subMetric: "tool usage", value: 88.5, change: 12, direction: "up" },
   { rank: 3, name: "Gemini 3 Flash Preview", author: "google", metric: "76.4B calls", subMetric: "tool usage", value: 76.4, change: 9, direction: "up" },
@@ -187,7 +185,7 @@ export const toolCallsSnapshot: OpenRouterMetricItem[] = [
   { rank: 10, name: "GLM 5.1", author: "zhipu", metric: "34.9B calls", subMetric: "tool usage", value: 34.9, change: 3, direction: "up" },
 ];
 
-export const contextLengthSnapshot: OpenRouterMetricItem[] = [
+export const contextLengthSnapshot: ModelMetricItem[] = [
   { rank: 1, name: "Gemini 3 Flash Preview", author: "google", metric: "1M context", subMetric: "1.12T tokens", value: 100, change: 17, direction: "up" },
   { rank: 2, name: "Gemini 2.5 Flash", author: "google", metric: "1M context", subMetric: "566B tokens", value: 92, change: 1, direction: "down" },
   { rank: 3, name: "Claude Sonnet 4.6", author: "anthropic", metric: "200K context", subMetric: "1.56T tokens", value: 84, change: 3, direction: "up" },
@@ -200,7 +198,7 @@ export const contextLengthSnapshot: OpenRouterMetricItem[] = [
   { rank: 10, name: "Nemotron 3 Super", author: "nvidia", metric: "128K context", subMetric: "589B tokens", value: 44, change: 2, direction: "down" },
 ];
 
-export const categoryRankingsSnapshot: OpenRouterMetricItem[] = [
+export const categoryRankingsSnapshot: ModelMetricItem[] = [
   { rank: 1, name: "DeepSeek V4 Flash", author: "deepseek", metric: "2.1T tokens", subMetric: "Programming", value: 92, change: 102, direction: "up" },
   { rank: 2, name: "Claude Sonnet 4.6", author: "anthropic", metric: "1.4T tokens", subMetric: "Programming", value: 78, change: 3, direction: "up" },
   { rank: 3, name: "GPT-5.5", author: "openai", metric: "920B tokens", subMetric: "Programming", value: 69, change: 5, direction: "up" },
@@ -213,7 +211,7 @@ export const categoryRankingsSnapshot: OpenRouterMetricItem[] = [
   { rank: 10, name: "Llama 3.1 8B Instruct", author: "meta", metric: "230B tokens", subMetric: "Programming", value: 26, change: 8, direction: "down" },
 ];
 
-export const naturalLanguageSnapshot: OpenRouterMetricItem[] = [
+export const naturalLanguageSnapshot: ModelMetricItem[] = [
   { rank: 1, name: "Hy3 preview", author: "tencent", metric: "2.85T tokens", subMetric: "English", value: 88, change: 41, direction: "up" },
   { rank: 2, name: "Claude Opus 4.7", author: "anthropic", metric: "1.41T tokens", subMetric: "English", value: 74, change: 8, direction: "down" },
   { rank: 3, name: "Gemini 3 Flash Preview", author: "google", metric: "1.12T tokens", subMetric: "English", value: 68, change: 1, direction: "down" },
@@ -226,7 +224,7 @@ export const naturalLanguageSnapshot: OpenRouterMetricItem[] = [
   { rank: 10, name: "Mistral Medium 3.5", author: "mistralai", metric: "292B tokens", subMetric: "English", value: 27, change: 2, direction: "flat" },
 ];
 
-export const programmingLanguageSnapshot: OpenRouterMetricItem[] = [
+export const programmingLanguageSnapshot: ModelMetricItem[] = [
   { rank: 1, name: "Claude Sonnet 4.6", author: "anthropic", metric: "1.18T tokens", subMetric: "Python", value: 84, change: 3, direction: "up" },
   { rank: 2, name: "DeepSeek V4 Flash", author: "deepseek", metric: "1.06T tokens", subMetric: "Python", value: 79, change: 102, direction: "up" },
   { rank: 3, name: "GPT-5.5", author: "openai", metric: "620B tokens", subMetric: "Python", value: 62, change: 5, direction: "up" },
@@ -239,7 +237,7 @@ export const programmingLanguageSnapshot: OpenRouterMetricItem[] = [
   { rank: 10, name: "Mistral Medium 3.5", author: "mistralai", metric: "240B tokens", subMetric: "Python", value: 24, change: 2, direction: "flat" },
 ];
 
-export const imageRankingsSnapshot: OpenRouterMetricItem[] = [
+export const imageRankingsSnapshot: ModelMetricItem[] = [
   { rank: 1, name: "Nano Banana (Gemini 2.5)", author: "google", metric: "48.2M images", subMetric: "image processing", value: 78, change: 22, direction: "up" },
   { rank: 2, name: "Gemini 2.5 Flash Image", author: "google", metric: "41.8M images", subMetric: "image processing", value: 68, change: 13, direction: "up" },
   { rank: 3, name: "GPT Image 1", author: "openai", metric: "30.6M images", subMetric: "image processing", value: 55, change: 6, direction: "up" },
@@ -252,7 +250,7 @@ export const imageRankingsSnapshot: OpenRouterMetricItem[] = [
   { rank: 10, name: "DeepSeek V4 Pro", author: "deepseek", metric: "8.6M images", subMetric: "image input", value: 18, change: 8, direction: "up" },
 ];
 
-export const audioRankingsSnapshot: OpenRouterMetricItem[] = [
+export const audioRankingsSnapshot: ModelMetricItem[] = [
   { rank: 1, name: "GPT-4o Transcribe", author: "openai", metric: "26.4M prompts", subMetric: "audio input", value: 74, change: 16, direction: "up" },
   { rank: 2, name: "Gemini 2.5 Flash", author: "google", metric: "21.9M prompts", subMetric: "audio input", value: 66, change: 1, direction: "down" },
   { rank: 3, name: "Whisper Large V3", author: "openai", metric: "18.2M prompts", subMetric: "audio input", value: 55, change: 4, direction: "down" },

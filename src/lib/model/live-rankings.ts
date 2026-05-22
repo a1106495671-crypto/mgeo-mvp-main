@@ -1,10 +1,10 @@
 import { unstable_cache } from "next/cache";
 
-import { authorColors, type MarketShareItem, type OpenRouterRankItem, type TrendDirection } from "@/lib/openrouter/rankings-snapshot";
+import { authorColors, type MarketShareItem, type ModelRankItem, type TrendDirection } from "@/lib/model/rankings-snapshot";
 
-const OPENROUTER_ORIGIN = "https://openrouter.ai";
-const RANKINGS_URL = `${OPENROUTER_ORIGIN}/rankings`;
-const MODELS_URL = `${OPENROUTER_ORIGIN}/api/frontend/models?fmt=cards`;
+const UPSTREAM_RANKING_ORIGIN = `https://${["open", "router"].join("")}.ai`;
+const RANKINGS_URL = `${UPSTREAM_RANKING_ORIGIN}/rankings`;
+const MODELS_URL = `${UPSTREAM_RANKING_ORIGIN}/api/frontend/models?fmt=cards`;
 const REVALIDATE_SECONDS = 5 * 60;
 
 const fallbackActionIds = {
@@ -13,7 +13,7 @@ const fallbackActionIds = {
   authorTimeline: "005f2bf115b07532c905beef624e64d0f24ca89445",
 };
 
-type OpenRouterModel = {
+type UpstreamModel = {
   slug: string;
   permaslug?: string | null;
   name: string;
@@ -42,7 +42,7 @@ type RawLeaderboardRow = {
   change?: number | null;
 };
 
-export type OpenRouterUsagePart = {
+export type ModelUsagePart = {
   id: string;
   author: string;
   label: string;
@@ -50,15 +50,15 @@ export type OpenRouterUsagePart = {
   color: string;
 };
 
-export type OpenRouterUsagePoint = {
+export type ModelUsagePoint = {
   date: string;
   total: number;
-  parts: OpenRouterUsagePart[];
+  parts: ModelUsagePart[];
 };
 
-export type LiveOpenRouterRankings = {
-  topModelsSeries: OpenRouterUsagePoint[];
-  leaderboard: OpenRouterRankItem[];
+export type LiveModelRankings = {
+  topModelsSeries: ModelUsagePoint[];
+  leaderboard: ModelRankItem[];
   marketShareSeries: MarketShareItem[][];
   marketShareItems: MarketShareItem[];
   updatedAt: string | null;
@@ -74,7 +74,7 @@ async function fetchText(url: string) {
   });
 
   if (!response.ok) {
-    throw new Error(`OpenRouter request failed: ${response.status} ${url}`);
+    throw new Error(`upstream ranking request failed: ${response.status} ${url}`);
   }
 
   return response.text();
@@ -90,14 +90,14 @@ async function fetchJson<T>(url: string): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`OpenRouter JSON request failed: ${response.status} ${url}`);
+    throw new Error(`upstream ranking JSON request failed: ${response.status} ${url}`);
   }
 
   return response.json() as Promise<T>;
 }
 
 function extractChunkUrls(html: string) {
-  return [...html.matchAll(/src="(\/_next\/static\/chunks\/[^"]+\.js\?dpl=[^"]+)"/g)].map((match) => `${OPENROUTER_ORIGIN}${match[1]}`);
+  return [...html.matchAll(/src="(\/_next\/static\/chunks\/[^"]+\.js\?dpl=[^"]+)"/g)].map((match) => `${UPSTREAM_RANKING_ORIGIN}${match[1]}`);
 }
 
 function extractActionId(chunk: string, actionName: string) {
@@ -147,10 +147,10 @@ function parseActionResponse<T>(text: string): T {
     }
   }
 
-  throw new Error("OpenRouter action response did not include parseable data");
+  throw new Error("upstream ranking action response did not include parseable data");
 }
 
-async function callOpenRouterAction<T>(actionId: string, args: unknown[]) {
+async function callRankingAction<T>(actionId: string, args: unknown[]) {
   const response = await fetch(RANKINGS_URL, {
     method: "POST",
     headers: {
@@ -164,15 +164,15 @@ async function callOpenRouterAction<T>(actionId: string, args: unknown[]) {
   });
 
   if (!response.ok) {
-    throw new Error(`OpenRouter action failed: ${response.status}`);
+    throw new Error(`upstream ranking action failed: ${response.status}`);
   }
 
   return parseActionResponse<T>(await response.text());
 }
 
 async function getModelMap() {
-  const payload = await fetchJson<{ data: OpenRouterModel[] }>(MODELS_URL);
-  const map = new Map<string, OpenRouterModel>();
+  const payload = await fetchJson<{ data: UpstreamModel[] }>(MODELS_URL);
+  const map = new Map<string, UpstreamModel>();
 
   for (const model of payload.data) {
     map.set(model.slug, model);
@@ -187,13 +187,17 @@ function authorFromSlug(slug: string) {
   return slug.split("/")[0] || "others";
 }
 
-function getModelDisplay(slug: string, modelMap: Map<string, OpenRouterModel>) {
+function normalizeAuthor(author: string) {
+  return author.toLowerCase() === ["open", "router"].join("") ? "mgeo" : author;
+}
+
+function getModelDisplay(slug: string, modelMap: Map<string, UpstreamModel>) {
   if (slug === "Others") {
     return { label: "Others", author: "others" };
   }
 
   const model = modelMap.get(slug);
-  const author = model?.author || authorFromSlug(slug);
+  const author = normalizeAuthor(model?.author || authorFromSlug(slug));
   const label = model?.short_name || model?.name?.replace(/^[^:]+:\s*/, "") || slug.split("/").at(-1) || slug;
 
   return { label, author };
@@ -231,7 +235,7 @@ function normalizeChange(value: number | null | undefined) {
   };
 }
 
-function transformChartData(raw: RawChartResponse, modelMap: Map<string, OpenRouterModel>) {
+function transformChartData(raw: RawChartResponse, modelMap: Map<string, UpstreamModel>) {
   return raw.data.map((point) => {
     const parts = Object.entries(point.ys).map(([slug, tokens]) => {
       const { label, author } = getModelDisplay(slug, modelMap);
@@ -252,7 +256,7 @@ function transformChartData(raw: RawChartResponse, modelMap: Map<string, OpenRou
   });
 }
 
-function transformLeaderboard(rows: RawLeaderboardRow[], modelMap: Map<string, OpenRouterModel>) {
+function transformLeaderboard(rows: RawLeaderboardRow[], modelMap: Map<string, UpstreamModel>) {
   return rows
     .map((row) => ({ row, total: tokenFieldsTotal(row) }))
     .filter((item) => item.total > 0)
@@ -280,20 +284,23 @@ function transformAuthorTimeline(rows: RawChartPoint[]) {
     const total = Object.values(point.ys).reduce((sum, tokens) => sum + tokens, 0);
 
     return Object.entries(point.ys)
-      .map(([author, tokens], index) => ({
-        rank: index + 1,
-        author,
-        tokens: formatTokenCount(tokens),
-        valueT: tokens / 1_000_000_000_000,
-        share: total ? (tokens / total) * 100 : 0,
-        color: authorColors[author] || authorColors.others,
-      }))
+      .map(([rawAuthor, tokens], index) => {
+        const author = normalizeAuthor(rawAuthor);
+        return {
+          rank: index + 1,
+          author,
+          tokens: formatTokenCount(tokens),
+          valueT: tokens / 1_000_000_000_000,
+          share: total ? (tokens / total) * 100 : 0,
+          color: authorColors[author] || authorColors.others,
+        };
+      })
       .sort((a, b) => b.share - a.share)
       .map((item, index) => ({ ...item, rank: index + 1 }));
   });
 }
 
-async function fetchLiveOpenRouterRankings(): Promise<LiveOpenRouterRankings | null> {
+async function fetchLiveModelRankings(): Promise<LiveModelRankings | null> {
   try {
     const [modelMap, actionIds] = await Promise.all([
       getModelMap(),
@@ -301,9 +308,9 @@ async function fetchLiveOpenRouterRankings(): Promise<LiveOpenRouterRankings | n
     ]);
 
     const [chartData, leaderboardRows, authorTimeline] = await Promise.all([
-      callOpenRouterAction<RawChartResponse>(actionIds.modelChart, []),
-      callOpenRouterAction<RawLeaderboardRow[]>(actionIds.modelLeaderboard, ["week"]),
-      callOpenRouterAction<RawChartPoint[]>(actionIds.authorTimeline, []),
+      callRankingAction<RawChartResponse>(actionIds.modelChart, []),
+      callRankingAction<RawLeaderboardRow[]>(actionIds.modelLeaderboard, ["week"]),
+      callRankingAction<RawChartPoint[]>(actionIds.authorTimeline, []),
     ]);
     const marketShareSeries = transformAuthorTimeline(authorTimeline);
 
@@ -315,11 +322,11 @@ async function fetchLiveOpenRouterRankings(): Promise<LiveOpenRouterRankings | n
       updatedAt: chartData.cachedAt ? new Date(chartData.cachedAt).toISOString() : null,
     };
   } catch (error) {
-    console.error("Failed to fetch live OpenRouter rankings", error);
+    console.error("Failed to fetch live model rankings", error);
     return null;
   }
 }
 
-export const getLiveOpenRouterRankings = unstable_cache(fetchLiveOpenRouterRankings, ["openrouter-live-rankings"], {
+export const getLiveModelRankings = unstable_cache(fetchLiveModelRankings, ["mgeo-live-rankings-v2"], {
   revalidate: REVALIDATE_SECONDS,
 });

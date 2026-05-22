@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
 
 import { SiteShell } from "@/components/marketing/SiteShell";
-import { OpenRouterRankingsView } from "@/components/openrouter-rankings/rankings-view";
-import { getLiveOpenRouterRankings } from "@/lib/openrouter/live-rankings";
+import { ModelRankingsView } from "@/components/model-rankings/rankings-view";
+import { getLiveModelRankings } from "@/lib/model/live-rankings";
 
 export const metadata: Metadata = {
   title: "AI模型排名 - 董逻辑MGEO",
-  description: "基于 OpenRouter Rankings 样式的本地模型排名测试页。",
+  description: "董逻辑MGEO AI模型排名，展示模型热度、能力与使用趋势。",
 };
 
 export default async function RankingPage() {
-  const liveRankings = await getLiveOpenRouterRankings();
+  const liveRankings = await getLiveModelRankings();
 
   return (
     <SiteShell current="/ranking">
-      <OpenRouterRankingsView showHeader={false} liveRankings={liveRankings} />
+      <ModelRankingsView showHeader={false} liveRankings={liveRankings} />
     </SiteShell>
   );
 }
