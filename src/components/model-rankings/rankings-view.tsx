@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   authorColors,
@@ -24,11 +27,18 @@ import {
   type ModelRankItem,
   type TrendDirection,
 } from "@/lib/model/rankings-snapshot";
-import type { LiveModelRankings, ModelUsagePoint } from "@/lib/model/live-rankings";
+import type { LiveModelRankings, ModelUsagePoint, RankingPeriod } from "@/lib/model/live-rankings";
 
 import styles from "./rankings-view.module.css";
 
 const navItems = ["Models", "Fusion", "Chat", "Rankings", "Apps", "Enterprise", "Pricing", "Docs"];
+
+const periodOptions: Array<{ value: RankingPeriod; label: string }> = [
+  { value: "day", label: "Today" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+  { value: "trending", label: "Trending" },
+];
 
 function formatTrend(direction: TrendDirection, value: number) {
   if (direction === "flat") return `${value}%`;
@@ -373,7 +383,7 @@ function SectionHeading({
   icon: MiniIconType;
   title: string;
   description: string;
-  control?: string;
+  control?: ReactNode;
 }) {
   return (
     <div className={styles.sectionHead}>
@@ -386,7 +396,74 @@ function SectionHeading({
         </div>
         <p>{description}</p>
       </div>
-      {control ? <button className={styles.selectPill}>{control}<span>⌄</span></button> : null}
+      {control ? (
+        <div className={styles.headingControl}>
+          {typeof control === "string" ? <span className={styles.staticBadge}>{control}</span> : control}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PeriodSelect({
+  value,
+  loading,
+  onChange,
+}: {
+  value: RankingPeriod;
+  loading: boolean;
+  onChange: (period: RankingPeriod) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const currentLabel = periodOptions.find((option) => option.value === value)?.label || "This Week";
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
+
+  return (
+    <div className={styles.periodSelect} ref={rootRef}>
+      <button
+        className={styles.periodButton}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        disabled={loading}
+        onClick={() => setOpen((state) => !state)}
+      >
+        <span>{loading ? "Loading" : currentLabel}</span>
+        <span aria-hidden="true">⌄</span>
+      </button>
+      {open ? (
+        <div className={styles.periodMenu} role="listbox">
+          {periodOptions.map((option) => (
+            <button
+              key={option.value}
+              className={option.value === value ? styles.periodOptionActive : styles.periodOption}
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              onClick={() => {
+                setOpen(false);
+                onChange(option.value);
+              }}
+            >
+              <span>{option.label}</span>
+              {option.value === value ? <span aria-hidden="true">✓</span> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -552,11 +629,11 @@ function TopModelsChart({ series: liveSeries }: { series?: ModelUsagePoint[] }) 
 function MarketShareChart({ series: liveSeries }: { series?: MarketShareItem[][] }) {
   const series = liveSeries?.length ? liveSeries : buildMarketSeries();
   const width = 1120;
-  const height = 360;
+  const height = 392;
   const left = 52;
-  const right = 16;
-  const top = 32;
-  const bottom = 46;
+  const right = 52;
+  const top = 12;
+  const bottom = 74;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
   const barGap = 3;
@@ -587,10 +664,10 @@ function MarketShareChart({ series: liveSeries }: { series?: MarketShareItem[][]
             </g>
           );
         })}
-        <text x={left + plotWidth * 0.69} y={top - 12} textAnchor="middle" className={styles.axisText}>2026年2月23日</text>
         {buildReadableAxisLabels(weekLabels).map((label, index) => {
           const x = left + (plotWidth / (weekLabels.length - 1)) * index;
-          return <text key={`${index}-${label}`} x={x} y={height - 9} textAnchor={index === 0 ? "start" : "middle"} className={styles.axisText}>{label}</text>;
+          const textAnchor = index === 0 ? "start" : index === weekLabels.length - 1 ? "end" : "middle";
+          return <text key={`${index}-${label}`} x={x} y={height - 28} textAnchor={textAnchor} className={styles.axisText}>{label}</text>;
         })}
         {series.map((week, index) => {
           const x = left + index * (barWidth + barGap);
@@ -823,9 +900,50 @@ export function ModelRankingsView({
   liveRankings?: LiveModelRankings | null;
 }) {
   const topModelsSeries = liveRankings?.topModelsSeries;
-  const leaderboardItems = liveRankings?.leaderboard?.length ? liveRankings.leaderboard : modelWeeklySnapshot;
+  const initialLeaderboardItems = liveRankings?.leaderboard?.length ? liveRankings.leaderboard : modelWeeklySnapshot;
   const marketSeries = liveRankings?.marketShareSeries?.length ? liveRankings.marketShareSeries : undefined;
   const marketItems = liveRankings?.marketShareItems?.length ? liveRankings.marketShareItems : marketShareSnapshot;
+  const [leaderboardItems, setLeaderboardItems] = useState<ModelRankItem[]>(initialLeaderboardItems);
+  const [period, setPeriod] = useState<RankingPeriod>(liveRankings?.period || "week");
+  const [isPeriodLoading, setIsPeriodLoading] = useState(false);
+  const [periodError, setPeriodError] = useState("");
+
+  useEffect(() => {
+    setLeaderboardItems(initialLeaderboardItems);
+    setPeriod(liveRankings?.period || "week");
+  }, [initialLeaderboardItems, liveRankings?.period]);
+
+  async function handlePeriodChange(nextPeriod: RankingPeriod) {
+    if (nextPeriod === period || isPeriodLoading) return;
+
+    const previousPeriod = period;
+    setPeriod(nextPeriod);
+    setIsPeriodLoading(true);
+    setPeriodError("");
+
+    try {
+      const response = await fetch(`/api/rankings/leaderboard?period=${nextPeriod}`, {
+        headers: { accept: "application/json" },
+      });
+      const payload = await response.json() as {
+        success?: boolean;
+        data?: { leaderboard?: ModelRankItem[]; period?: RankingPeriod };
+        message?: string;
+      };
+
+      if (!response.ok || !payload.success || !payload.data?.leaderboard?.length) {
+        throw new Error(payload.message || "暂时无法获取模型排名。");
+      }
+
+      setLeaderboardItems(payload.data.leaderboard);
+      setPeriod(payload.data.period || nextPeriod);
+    } catch (error) {
+      setPeriod(previousPeriod);
+      setPeriodError(error instanceof Error ? error.message : "暂时无法获取模型排名。");
+    } finally {
+      setIsPeriodLoading(false);
+    }
+  }
 
   return (
     <>
@@ -842,7 +960,13 @@ export function ModelRankingsView({
         </section>
 
         <section className={styles.module} id="leaderboard">
-          <SectionHeading icon="cup" title="LLM Leaderboard" description="对比当前最受关注的大模型" control="This Week" />
+          <SectionHeading
+            icon="cup"
+            title="LLM Leaderboard"
+            description="按时间范围查询不同模型的调用量"
+            control={<PeriodSelect value={period} loading={isPeriodLoading} onChange={handlePeriodChange} />}
+          />
+          {periodError ? <p className={styles.inlineError}>{periodError}</p> : null}
           <RankingRows items={leaderboardItems} />
         </section>
 

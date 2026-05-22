@@ -7,11 +7,30 @@ const RANKINGS_URL = `${UPSTREAM_RANKING_ORIGIN}/rankings`;
 const MODELS_URL = `${UPSTREAM_RANKING_ORIGIN}/api/frontend/models?fmt=cards`;
 const REVALIDATE_SECONDS = 5 * 60;
 
+export type RankingPeriod = "day" | "week" | "month" | "trending";
+
 const fallbackActionIds = {
   modelChart: "00cb194ad7c33c8f52f4d016107f812f3837aef7f1",
   modelLeaderboard: "40824635c5eb77626bdf6795ffbf382c0862b321e1",
   authorTimeline: "005f2bf115b07532c905beef624e64d0f24ca89445",
 };
+
+async function fetchWithRetry(input: RequestInfo | URL, init: RequestInit, attempts = 2) {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= attempts; attempt += 1) {
+    try {
+      return await fetch(input, init);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+      }
+    }
+  }
+
+  throw lastError;
+}
 
 type UpstreamModel = {
   slug: string;
@@ -61,11 +80,12 @@ export type LiveModelRankings = {
   leaderboard: ModelRankItem[];
   marketShareSeries: MarketShareItem[][];
   marketShareItems: MarketShareItem[];
+  period: RankingPeriod;
   updatedAt: string | null;
 };
 
 async function fetchText(url: string) {
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     headers: {
       "user-agent": "DongLuoji-MGEO/1.0 (+https://www.dongluoji.com/ranking)",
       accept: "text/html,application/javascript,text/plain,*/*",
@@ -81,7 +101,7 @@ async function fetchText(url: string) {
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     headers: {
       "user-agent": "DongLuoji-MGEO/1.0 (+https://www.dongluoji.com/ranking)",
       accept: "application/json",
@@ -151,7 +171,7 @@ function parseActionResponse<T>(text: string): T {
 }
 
 async function callRankingAction<T>(actionId: string, args: unknown[]) {
-  const response = await fetch(RANKINGS_URL, {
+  const response = await fetchWithRetry(RANKINGS_URL, {
     method: "POST",
     headers: {
       "content-type": "text/plain;charset=UTF-8",
@@ -300,7 +320,7 @@ function transformAuthorTimeline(rows: RawChartPoint[]) {
   });
 }
 
-async function fetchLiveModelRankings(): Promise<LiveModelRankings | null> {
+async function fetchLiveModelRankings(period: RankingPeriod = "week"): Promise<LiveModelRankings | null> {
   try {
     const [modelMap, actionIds] = await Promise.all([
       getModelMap(),
@@ -309,7 +329,7 @@ async function fetchLiveModelRankings(): Promise<LiveModelRankings | null> {
 
     const [chartData, leaderboardRows, authorTimeline] = await Promise.all([
       callRankingAction<RawChartResponse>(actionIds.modelChart, []),
-      callRankingAction<RawLeaderboardRow[]>(actionIds.modelLeaderboard, ["week"]),
+      callRankingAction<RawLeaderboardRow[]>(actionIds.modelLeaderboard, [period]),
       callRankingAction<RawChartPoint[]>(actionIds.authorTimeline, []),
     ]);
     const marketShareSeries = transformAuthorTimeline(authorTimeline);
@@ -319,6 +339,7 @@ async function fetchLiveModelRankings(): Promise<LiveModelRankings | null> {
       leaderboard: transformLeaderboard(leaderboardRows, modelMap),
       marketShareSeries,
       marketShareItems: marketShareSeries.at(-1)?.slice(0, 10) || [],
+      period,
       updatedAt: chartData.cachedAt ? new Date(chartData.cachedAt).toISOString() : null,
     };
   } catch (error) {
@@ -327,6 +348,31 @@ async function fetchLiveModelRankings(): Promise<LiveModelRankings | null> {
   }
 }
 
-export const getLiveModelRankings = unstable_cache(fetchLiveModelRankings, ["mgeo-live-rankings-v2"], {
+export const getLiveModelRankings = unstable_cache(fetchLiveModelRankings, ["mgeo-live-rankings-v3"], {
+  revalidate: REVALIDATE_SECONDS,
+});
+
+async function fetchLiveModelLeaderboard(period: RankingPeriod) {
+  try {
+    const [modelMap, leaderboardRows] = await Promise.all([
+      getModelMap(),
+      callRankingAction<RawLeaderboardRow[]>(fallbackActionIds.modelLeaderboard, [period]).catch(async () => {
+        const actionIds = await discoverActionIds();
+        return callRankingAction<RawLeaderboardRow[]>(actionIds.modelLeaderboard, [period]);
+      }),
+    ]);
+
+    return {
+      period,
+      leaderboard: transformLeaderboard(leaderboardRows, modelMap),
+      updatedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("Failed to fetch live model leaderboard", error);
+    return null;
+  }
+}
+
+export const getLiveModelLeaderboard = unstable_cache(fetchLiveModelLeaderboard, ["mgeo-live-leaderboard-v1"], {
   revalidate: REVALIDATE_SECONDS,
 });

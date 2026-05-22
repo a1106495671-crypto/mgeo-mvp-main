@@ -213,21 +213,97 @@
   stroke-linejoin: round;
 }
 
-.selectPill {
+.headingControl {
+  flex: 0 0 auto;
+}
+
+.staticBadge {
   border: 1px solid #e0e4ea;
-  background: #fff;
+  background: #f8fafc;
   color: #747a85;
-  min-width: 174px;
-  height: 44px;
+  min-width: 132px;
+  height: 38px;
   border-radius: 999px;
-  padding: 0 15px 0 22px;
+  padding: 0 20px;
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 18px;
+  justify-content: center;
   font-size: 16px;
   font-weight: 560;
   white-space: nowrap;
+}
+
+.periodSelect {
+  position: relative;
+}
+
+.periodButton {
+  border: 1px solid #e0e4ea;
+  background: #fff;
+  color: #747a85;
+  min-width: 150px;
+  height: 44px;
+  border-radius: 999px;
+  padding: 0 16px 0 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 16px;
+  font-weight: 560;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.periodButton:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.periodMenu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 12;
+  width: 170px;
+  padding: 7px;
+  background: #fff;
+  border: 1px solid #e3e7ee;
+  border-radius: 8px;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.14);
+}
+
+.periodOption,
+.periodOptionActive {
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #747a85;
+  min-height: 34px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 520;
+  text-align: left;
+  cursor: pointer;
+}
+
+.periodOption:hover,
+.periodOptionActive {
+  background: #f3f5f8;
+  color: #20242a;
+}
+
+.inlineError {
+  margin: -28px 0 28px;
+  color: #d05c67;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .chartScroller {
