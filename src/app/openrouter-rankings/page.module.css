@@ -1,0 +1,482 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.97);
+  border-bottom: 1px solid #eef0f3;
+  backdrop-filter: blur(16px);
+}
+
+.headerInner {
+  height: 64px;
+  display: grid;
+  grid-template-columns: minmax(236px, auto) minmax(260px, 340px) minmax(520px, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 0 44px;
+}
+
+.brand {
+  color: #676d78;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 19px;
+  font-weight: 680;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brandMark {
+  position: relative;
+  width: 22px;
+  height: 16px;
+  display: inline-block;
+}
+
+.brandMark::before,
+.brandMark::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 4px;
+  left: 1px;
+  border-radius: 999px;
+  background: #8b929f;
+  transform: rotate(-22deg);
+}
+
+.brandMark::before {
+  top: 2px;
+}
+
+.brandMark::after {
+  bottom: 2px;
+}
+
+.searchBox {
+  min-width: 0;
+  height: 42px;
+  color: #747a85;
+  background: #f2f2f5;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.searchIcon {
+  color: #8c93a0;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.searchBox kbd {
+  margin-left: auto;
+  min-width: 24px;
+  height: 24px;
+  color: #8c93a0;
+  background: #e6e7eb;
+  border: 0;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 16px;
+}
+
+.nav {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(15px, 1.35vw, 28px);
+  overflow: hidden;
+}
+
+.nav a {
+  color: #686e79;
+  font-size: 18px;
+  font-weight: 640;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav a:hover,
+.navActive {
+  color: #111318 !important;
+}
+
+.signup {
+  color: #fff;
+  background: #6357f6;
+  border-radius: 999px;
+  padding: 15px 22px;
+  font-size: 18px;
+  font-weight: 760;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(99, 87, 246, 0.22);
+  white-space: nowrap;
+}
+
+.page {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 82px 44px 96px;
+  color: #14171d;
+  background: #fff;
+}
+
+.hero {
+  margin-bottom: 74px;
+}
+
+.hero h1 {
+  margin: 0;
+  color: #20242a;
+  font-size: 40px;
+  line-height: 1.12;
+  font-weight: 720;
+  letter-spacing: 0;
+}
+
+.hero p {
+  margin: 14px 0 0;
+  max-width: 900px;
+  color: #6e7480;
+  font-size: 18px;
+  line-height: 1.55;
+  font-weight: 460;
+}
+
+.module {
+  margin-top: 78px;
+}
+
+.module + .module {
+  margin-top: 92px;
+}
+
+.sectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 28px;
+  margin-bottom: 42px;
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sectionTitleRow h2 {
+  margin: 0;
+  color: #5f6672;
+  font-size: 25px;
+  line-height: 1.2;
+  font-weight: 660;
+  letter-spacing: 0;
+}
+
+.sectionHead p {
+  margin: 12px 0 0;
+  color: #667085;
+  font-size: 16px;
+  line-height: 1.55;
+  font-weight: 520;
+}
+
+.iconWrap {
+  width: 24px;
+  height: 24px;
+  color: #6f7682;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.iconWrap svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.selectPill {
+  border: 1px solid #e0e4ea;
+  background: #fff;
+  color: #747a85;
+  min-width: 174px;
+  height: 44px;
+  border-radius: 999px;
+  padding: 0 15px 0 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 16px;
+  font-weight: 560;
+  white-space: nowrap;
+}
+
+.chartScroller {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+}
+
+.chartSvg {
+  display: block;
+  width: 100%;
+  min-width: 940px;
+  height: auto;
+  overflow: visible;
+}
+
+.axisText {
+  fill: #737985;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.gridLine {
+  stroke: transparent;
+}
+
+.gridLineDashed {
+  stroke: #dce3ec;
+  stroke-width: 1;
+  stroke-dasharray: 4 5;
+}
+
+.axisLine {
+  stroke: #b9c3d1;
+  stroke-width: 1;
+}
+
+.rowsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 88px;
+  padding-top: 10px;
+}
+
+.rowColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.rankRow,
+.metricRow,
+.legendRow {
+  display: grid;
+  grid-template-columns: 44px 28px minmax(0, 1fr) 156px;
+  align-items: center;
+  gap: 14px;
+  min-height: 44px;
+}
+
+.rankNo {
+  color: #737985;
+  font-size: 21px;
+  line-height: 1;
+  font-weight: 520;
+  text-align: left;
+}
+
+.authorDot,
+.legendDot {
+  border-radius: 999px;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.authorDot {
+  width: 25px;
+  height: 25px;
+  box-shadow: 0 1px 8px rgba(15, 23, 42, 0.16);
+}
+
+.legendDot {
+  width: 16px;
+  height: 16px;
+}
+
+.rankIdentity {
+  min-width: 0;
+}
+
+.rankName,
+.legendName {
+  color: #111318;
+  font-size: 22px;
+  line-height: 1.16;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.legendName {
+  font-size: 20px;
+}
+
+.byline {
+  margin-top: 6px;
+  color: #7b818d;
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 520;
+}
+
+.byline span {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.metric {
+  color: #737985;
+  text-align: right;
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 540;
+}
+
+.metric div + div {
+  margin-top: 7px;
+  font-size: 16px;
+}
+
+.trendUp {
+  color: #5fb88c;
+}
+
+.trendDown {
+  color: #ff858d;
+}
+
+.trendFlat {
+  color: #8b93a3;
+}
+
+.sourceNote {
+  margin: 84px 0 0;
+  color: #8a91a0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+@media (max-width: 1260px) {
+  .headerInner {
+    grid-template-columns: auto minmax(220px, 1fr) auto;
+    gap: 18px;
+    padding: 0 28px;
+  }
+
+  .nav {
+    display: none;
+  }
+
+  .page {
+    padding-left: 30px;
+    padding-right: 30px;
+  }
+}
+
+@media (max-width: 900px) {
+  .headerInner {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .searchBox {
+    display: none;
+  }
+
+  .page {
+    padding: 54px 22px 72px;
+  }
+
+  .hero {
+    margin-bottom: 54px;
+  }
+
+  .hero h1 {
+    font-size: 34px;
+  }
+
+  .sectionHead {
+    display: grid;
+    gap: 18px;
+  }
+
+  .rowsGrid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}
+
+@media (max-width: 640px) {
+  .headerInner {
+    height: 58px;
+    padding: 0 16px;
+  }
+
+  .brand {
+    font-size: 16px;
+  }
+
+  .signup {
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+
+  .page {
+    padding: 40px 16px 64px;
+  }
+
+  .module,
+  .module + .module {
+    margin-top: 58px;
+  }
+
+  .hero h1 {
+    font-size: 30px;
+  }
+
+  .hero p,
+  .sectionHead p {
+    font-size: 15px;
+  }
+
+  .rankRow,
+  .metricRow,
+  .legendRow {
+    grid-template-columns: 34px 22px minmax(0, 1fr);
+    row-gap: 8px;
+  }
+
+  .metric {
+    grid-column: 3;
+    text-align: left;
+    font-size: 15px;
+  }
+
+  .rankName,
+  .legendName {
+    font-size: 18px;
+  }
+}

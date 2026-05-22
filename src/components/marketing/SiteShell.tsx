@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 export const MARKETING_NAV_ITEMS = [
   { href: "/#detector", label: "免费检测" },
   { href: "/ranking", label: "排名" },
-  { href: "/openrouter-rankings", label: "模型榜" },
   { href: "/pricing", label: "服务方案" },
   { href: "/cases", label: "方法案例" },
   { href: "/#contact", label: "联系我们" },
