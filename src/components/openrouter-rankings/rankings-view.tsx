@@ -25,6 +25,7 @@ import {
   type OpenRouterRankItem,
   type TrendDirection,
 } from "@/lib/openrouter/rankings-snapshot";
+import type { LiveOpenRouterRankings, OpenRouterUsagePoint } from "@/lib/openrouter/live-rankings";
 
 import styles from "./rankings-view.module.css";
 
@@ -64,6 +65,12 @@ function getWeekLabel(index: number, total: number) {
   return weekLabels[labelIndex] || weekLabels[0];
 }
 
+function formatChartDate(value: string) {
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return value;
+  return `${Number(year)}年${Number(month)}月${Number(day)}日`;
+}
+
 function getTooltipX(x: number, barWidth: number, tooltipWidth: number, chartWidth: number, rightPadding: number) {
   return Math.min(Math.max(0, x + barWidth / 2 - tooltipWidth / 2), chartWidth - tooltipWidth - rightPadding);
 }
@@ -77,7 +84,7 @@ function UsageTooltip({
   width,
   chartWidth,
 }: {
-  week: ReturnType<typeof buildUsageSeries>[number];
+  week: OpenRouterUsagePoint;
   index: number;
   x: number;
   y: number;
@@ -89,7 +96,7 @@ function UsageTooltip({
     .map((part) => ({
       ...part,
       share: (part.value / week.total) * 100,
-      label: formatAuthor(part.author),
+      label: part.label || formatAuthor(part.author),
       color: authorColors[part.author] || authorColors.others,
     }))
     .sort((a, b) => b.value - a.value);
@@ -103,10 +110,10 @@ function UsageTooltip({
       className={styles.chartTooltipObject}
     >
       <div className={styles.chartTooltip}>
-        <div className={styles.tooltipDate}>{getWeekLabel(index, 54)}</div>
+        <div className={styles.tooltipDate}>{week.date ? formatChartDate(week.date) : getWeekLabel(index, 54)}</div>
         <div className={styles.tooltipRows}>
           {rows.map((row) => (
-            <div className={styles.tooltipRow} key={row.author}>
+            <div className={styles.tooltipRow} key={row.id}>
               <span className={styles.tooltipSwatch} style={{ background: row.color }} />
               <span className={styles.tooltipName}>{row.label}</span>
               <span className={styles.tooltipValue}>
@@ -173,7 +180,7 @@ function ShareTooltip({
 }
 
 function buildUsageSeries() {
-  return Array.from({ length: 54 }, (_, index) => {
+  return Array.from({ length: 54 }, (_, index): OpenRouterUsagePoint => {
     const progress = index / 53;
     const ramp = 1.4 + progress * 5.6 + Math.max(0, progress - 0.64) * 44;
     const pulse = Math.sin(index * 0.61) * 0.7 + Math.cos(index * 0.17) * 0.45;
@@ -188,10 +195,24 @@ function buildUsageSeries() {
     return {
       total,
       parts: shares.map((item) => ({
+        id: item.author,
         author: item.author,
+        label: formatAuthor(item.author),
         value: (item.value / totalShare) * total,
+        color: authorColors[item.author] || authorColors.others,
       })),
+      date: "",
     };
+  });
+}
+
+function buildAxisLabels(series: OpenRouterUsagePoint[]) {
+  if (!series.some((item) => item.date)) return weekLabels;
+
+  return weekLabels.map((_, index) => {
+    const seriesIndex = Math.round((index / Math.max(1, weekLabels.length - 1)) * (series.length - 1));
+    const date = series[seriesIndex]?.date;
+    return date ? formatChartDate(date).replace(/^\d+年/, index === 0 ? "$&" : "") : "";
   });
 }
 
@@ -447,8 +468,8 @@ function MetricStackedChart({ items }: { items: OpenRouterMetricItem[] }) {
   );
 }
 
-function TopModelsChart() {
-  const series = buildUsageSeries();
+function TopModelsChart({ series: liveSeries }: { series?: OpenRouterUsagePoint[] }) {
+  const series = liveSeries?.length ? liveSeries : buildUsageSeries();
   const width = 1120;
   const height = 360;
   const left = 52;
@@ -459,16 +480,18 @@ function TopModelsChart() {
   const plotHeight = height - top - bottom;
   const barGap = 3;
   const barWidth = plotWidth / series.length - barGap;
-  const maxY = 30;
+  const maxY = Math.max(30, Math.ceil(Math.max(...series.map((item) => item.total)) / 5) * 5);
+  const yTicks = [maxY, maxY * 0.75, maxY * 0.5, maxY * 0.25];
+  const axisLabels = buildAxisLabels(series);
 
   return (
     <div className={styles.chartScroller}>
       <svg className={styles.chartSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Weekly usage stacked bar chart">
-        {[30, 22.5, 15, 7.5].map((tick) => {
+        {yTicks.map((tick) => {
           const y = top + (1 - tick / maxY) * plotHeight;
           return (
             <g key={tick}>
-              <text x={0} y={y + 5} className={styles.axisText}>{tick === 30 ? "30T" : `${tick}T`}</text>
+              <text x={0} y={y + 5} className={styles.axisText}>{tick === maxY ? `${maxY}T` : `${Number(tick.toFixed(1))}T`}</text>
               <line x1={left} x2={width - right} y1={y} y2={y} className={styles.gridLine} />
             </g>
           );
@@ -483,20 +506,20 @@ function TopModelsChart() {
                 yCursor -= h;
                 return (
                   <rect
-                    key={`${index}-${part.author}`}
+                    key={`${index}-${part.id}`}
                     x={x}
                     y={yCursor}
                     width={barWidth}
                     height={h}
-                    fill={authorColors[part.author] || authorColors.others}
+                    fill={part.color || authorColors[part.author] || authorColors.others}
                   />
                 );
               })}
             </g>
           );
         })}
-        {weekLabels.map((label, index) => {
-          const x = left + (plotWidth / (weekLabels.length - 1)) * index;
+        {axisLabels.map((label, index) => {
+          const x = left + (plotWidth / (axisLabels.length - 1)) * index;
           return <text key={label} x={x} y={height - 9} textAnchor={index === 0 ? "start" : "middle"} className={styles.axisText}>{label}</text>;
         })}
         {series.map((week, index) => {
@@ -522,8 +545,8 @@ function TopModelsChart() {
   );
 }
 
-function MarketShareChart() {
-  const series = buildMarketSeries();
+function MarketShareChart({ series: liveSeries }: { series?: MarketShareItem[][] }) {
+  const series = liveSeries?.length ? liveSeries : buildMarketSeries();
   const width = 1120;
   const height = 360;
   const left = 52;
@@ -788,7 +811,18 @@ function AppRows({ items }: { items: OpenRouterAppItem[] }) {
   );
 }
 
-export function OpenRouterRankingsView({ showHeader = true }: { showHeader?: boolean }) {
+export function OpenRouterRankingsView({
+  showHeader = true,
+  liveRankings,
+}: {
+  showHeader?: boolean;
+  liveRankings?: LiveOpenRouterRankings | null;
+}) {
+  const topModelsSeries = liveRankings?.topModelsSeries;
+  const leaderboardItems = liveRankings?.leaderboard?.length ? liveRankings.leaderboard : openRouterWeeklySnapshot;
+  const marketSeries = liveRankings?.marketShareSeries?.length ? liveRankings.marketShareSeries : undefined;
+  const marketItems = liveRankings?.marketShareItems?.length ? liveRankings.marketShareItems : marketShareSnapshot;
+
   return (
     <>
       {showHeader ? <OpenRouterRankingsHeader /> : null}
@@ -800,18 +834,18 @@ export function OpenRouterRankingsView({ showHeader = true }: { showHeader?: boo
 
         <section className={styles.module} id="top-models">
           <SectionHeading icon="bars" title="Top Models" description="Weekly usage of models across OpenRouter" />
-          <TopModelsChart />
+          <TopModelsChart series={topModelsSeries} />
         </section>
 
         <section className={styles.module} id="leaderboard">
           <SectionHeading icon="cup" title="LLM Leaderboard" description="Compare the most popular models on OpenRouter" control="This Week" />
-          <RankingRows items={openRouterWeeklySnapshot} />
+          <RankingRows items={leaderboardItems} />
         </section>
 
         <section className={styles.module} id="market-share">
           <SectionHeading icon="chart" title="Market Share" description="Compare OpenRouter token share by model author" />
-          <MarketShareChart />
-          <MarketRows items={marketShareSnapshot} />
+          <MarketShareChart series={marketSeries} />
+          <MarketRows items={marketItems} />
         </section>
 
         <section className={styles.module} id="tools">
