@@ -207,13 +207,17 @@ function buildUsageSeries() {
 }
 
 function buildAxisLabels(series: OpenRouterUsagePoint[]) {
-  if (!series.some((item) => item.date)) return weekLabels;
+  if (!series.some((item) => item.date)) return buildReadableAxisLabels(weekLabels);
 
-  return weekLabels.map((_, index) => {
+  return buildReadableAxisLabels(weekLabels.map((_, index) => {
     const seriesIndex = Math.round((index / Math.max(1, weekLabels.length - 1)) * (series.length - 1));
     const date = series[seriesIndex]?.date;
     return date ? formatChartDate(date).replace(/^\d+年/, index === 0 ? "$&" : "") : "";
-  });
+  }));
+}
+
+function buildReadableAxisLabels(labels: string[]) {
+  return labels.map((label, index) => (index === 1 && /^\d+年/.test(labels[0] || "") ? "" : label));
 }
 
 function buildMarketSeries() {
@@ -434,9 +438,9 @@ function MetricStackedChart({ items }: { items: OpenRouterMetricItem[] }) {
             </g>
           );
         })}
-        {weekLabels.map((label, index) => {
+        {buildReadableAxisLabels(weekLabels).map((label, index) => {
           const x = left + (plotWidth / (weekLabels.length - 1)) * index;
-          return <text key={label} x={x} y={height - 9} textAnchor={index === 0 ? "start" : "middle"} className={styles.axisText}>{label}</text>;
+          return <text key={`${index}-${label}`} x={x} y={height - 9} textAnchor={index === 0 ? "start" : "middle"} className={styles.axisText}>{label}</text>;
         })}
         {series.map((week, index) => {
           const x = left + index * (barWidth + barGap);
@@ -551,7 +555,7 @@ function MarketShareChart({ series: liveSeries }: { series?: MarketShareItem[][]
   const height = 360;
   const left = 52;
   const right = 16;
-  const top = 12;
+  const top = 32;
   const bottom = 46;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
@@ -583,10 +587,10 @@ function MarketShareChart({ series: liveSeries }: { series?: MarketShareItem[][]
             </g>
           );
         })}
-        <text x={left + plotWidth * 0.67} y={top - 3} className={styles.axisText}>2026年2月23日</text>
-        {weekLabels.map((label, index) => {
+        <text x={left + plotWidth * 0.69} y={top - 12} textAnchor="middle" className={styles.axisText}>2026年2月23日</text>
+        {buildReadableAxisLabels(weekLabels).map((label, index) => {
           const x = left + (plotWidth / (weekLabels.length - 1)) * index;
-          return <text key={label} x={x} y={height - 9} textAnchor={index === 0 ? "start" : "middle"} className={styles.axisText}>{label}</text>;
+          return <text key={`${index}-${label}`} x={x} y={height - 9} textAnchor={index === 0 ? "start" : "middle"} className={styles.axisText}>{label}</text>;
         })}
         {series.map((week, index) => {
           const x = left + index * (barWidth + barGap);
