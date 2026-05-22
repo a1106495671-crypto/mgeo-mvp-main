@@ -26,7 +26,7 @@ import {
   type TrendDirection,
 } from "@/lib/openrouter/rankings-snapshot";
 
-import styles from "./page.module.css";
+import styles from "./rankings-view.module.css";
 
 const navItems = ["Models", "Fusion", "Chat", "Rankings", "Apps", "Enterprise", "Pricing", "Docs"];
 

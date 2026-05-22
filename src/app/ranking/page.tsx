@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { SiteShell } from "@/components/marketing/SiteShell";
-import { OpenRouterRankingsView } from "@/app/openrouter-rankings/rankings-view";
+import { OpenRouterRankingsView } from "@/components/openrouter-rankings/rankings-view";
 
 export const metadata: Metadata = {
   title: "AI模型排名 - 董逻辑MGEO",

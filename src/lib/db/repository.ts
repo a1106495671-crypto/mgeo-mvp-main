@@ -4,7 +4,14 @@ import { getPlanConfig } from "@/lib/auth/plans";
 import { queryPostgres } from "@/lib/db/postgres";
 import { getSqliteDb, sqliteHasColumn } from "@/lib/db/sqlite";
 import { normalizeDetectReport } from "@/lib/detect/report-shape";
-import type { PlatformDetail, PlatformKey } from "@/lib/ranking/shared";
+
+type PlatformKey = "doubao" | "deepseek" | "kimi" | "qianwen" | "yuanbao" | "wenxin";
+
+type PlatformDetail = {
+  mentioned: boolean;
+  position: number | null;
+  sentiment: "positive" | "neutral" | "negative" | null;
+};
 
 type ScanReportRecord = {
   taskId: string;
