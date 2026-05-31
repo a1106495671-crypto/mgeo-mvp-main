@@ -13,3 +13,4 @@ data/*.sqlite-journal
 .tmp-*
 data/mock-reports
 .vercel
+docker-compose.override.yml

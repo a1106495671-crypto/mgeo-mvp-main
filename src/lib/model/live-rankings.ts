@@ -11,11 +11,29 @@ export type RankingPeriod = "day" | "week" | "month" | "trending";
 export type AppRankingPeriod = "day" | "week" | "month";
 
 const fallbackActionIds = {
-  modelChart: "00cb194ad7c33c8f52f4d016107f812f3837aef7f1",
-  modelLeaderboard: "40824635c5eb77626bdf6795ffbf382c0862b321e1",
-  authorTimeline: "005f2bf115b07532c905beef624e64d0f24ca89445",
-  appRankingsMap: "00b5731bd55aa0b6014b633cfc61b4990b7ea98676",
+  modelChart: "0090543b47a9a4932cb5b318306a0e541d13bfb427",
+  modelLeaderboard: "40f9c1737045f5080a2f0df80bb985450bdd0f4367",
+  authorTimeline: "004913682bac627c2dc0e3420f77f50d62a0dfefa2",
+  appRankingsMap: "00c8cce6b22788f8dce2a0cc708348eb8a51abcda5",
 };
+
+const REFRESH_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+let cachedActionIds: typeof fallbackActionIds = { ...fallbackActionIds };
+let lastRefreshAt = 0;
+let refreshPromise: Promise<typeof cachedActionIds> | null = null;
+
+async function getOrRefreshActionIds(): Promise<typeof cachedActionIds> {
+  const now = Date.now();
+  if (now - lastRefreshAt < REFRESH_INTERVAL_MS) return cachedActionIds;
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = discoverActionIds()
+    .then((ids) => { cachedActionIds = ids; lastRefreshAt = Date.now(); return ids; })
+    .catch(() => cachedActionIds)
+    .finally(() => { refreshPromise = null; });
+
+  return cachedActionIds;
+}
 
 async function fetchWithRetry(input: RequestInfo | URL, init: RequestInit, attempts = 2) {
   let lastError: unknown;
@@ -139,8 +157,8 @@ function extractActionId(chunk: string, actionName: string) {
   const nameIndex = chunk.indexOf(actionName);
   if (nameIndex === -1) return null;
 
-  const nearby = chunk.slice(Math.max(0, nameIndex - 320), nameIndex + actionName.length + 80);
-  return nearby.match(/createServerReference\("([0-9a-f]+)"/)?.[1] || null;
+  const nearby = chunk.slice(Math.max(0, nameIndex - 400), nameIndex + actionName.length + 120);
+  return nearby.match(/createServerReference\)?\("([0-9a-f]+)"/)?.[1] || null;
 }
 
 async function discoverActionIds() {
@@ -448,7 +466,7 @@ async function fetchLiveModelRankings(period: RankingPeriod = "week"): Promise<L
   try {
     const [modelMap, actionIds] = await Promise.all([
       getModelMap(),
-      discoverActionIds(),
+      getOrRefreshActionIds(),
     ]);
 
     const [chartData, leaderboardRows, authorTimeline] = await Promise.all([

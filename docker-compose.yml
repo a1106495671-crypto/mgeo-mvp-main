@@ -1,0 +1,19 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app                    # Source code bind-mount: edit in VSCode, hot-reload in container
+      - node_modules:/app/node_modules  # Native modules (better-sqlite3) compiled inside container
+      - next_cache:/app/.next      # Build cache, avoids host/container conflicts
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=development
+      - NEXTAUTH_URL=http://localhost:3000
+    restart: unless-stopped
+
+volumes:
+  node_modules:
+  next_cache:

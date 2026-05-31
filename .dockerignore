@@ -1,0 +1,14 @@
+.next
+node_modules
+.git
+.DS_Store
+*.log
+.dev-server.*
+*.tsbuildinfo
+.env.local
+.tmp-*
+.vercel
+codex-bin
+data/*.sqlite
+data/*.sqlite-journal
+data/mock-reports

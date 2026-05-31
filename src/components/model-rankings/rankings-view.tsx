@@ -143,6 +143,15 @@ function formatChartDate(value: string) {
 }
 
 function getTooltipX(x: number, barWidth: number, tooltipWidth: number, chartWidth: number, rightPadding: number) {
+  // Place tooltip to the LEFT of the bar when there's space, similar to OpenRouter
+  const preferredLeft = x - tooltipWidth - 8;
+  if (preferredLeft >= 0) return preferredLeft;
+
+  // Fallback: right of bar, clamped to chart bounds
+  const rightOfBar = x + barWidth + 8;
+  if (rightOfBar + tooltipWidth <= chartWidth - rightPadding) return rightOfBar;
+
+  // Last resort: clamp inside chart
   return Math.min(Math.max(0, x + barWidth / 2 - tooltipWidth / 2), chartWidth - tooltipWidth - rightPadding);
 }
 
