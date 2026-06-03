@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 
-import { authorColors, type MarketShareItem, type ModelAppItem, type ModelRankItem, type TrendDirection } from "@/lib/model/rankings-snapshot";
+import { authorColors, type MarketShareItem, type ModelAppItem, type ModelMetricItem, type ModelRankItem, type TrendDirection } from "@/lib/model/rankings-snapshot";
 
 const UPSTREAM_RANKING_ORIGIN = `https://${["open", "router"].join("")}.ai`;
 const RANKINGS_URL = `${UPSTREAM_RANKING_ORIGIN}/rankings`;
@@ -15,6 +15,13 @@ const fallbackActionIds = {
   modelLeaderboard: "40f9c1737045f5080a2f0df80bb985450bdd0f4367",
   authorTimeline: "004913682bac627c2dc0e3420f77f50d62a0dfefa2",
   appRankingsMap: "00c8cce6b22788f8dce2a0cc708348eb8a51abcda5",
+  toolRankingsChart: "003897c3dd8b589c2ae23ce4bf1d8a861cbc2f4233",
+  useCaseRankingsChart: "40b649b2cc6d44a360a3c410849222d446a6f535e9",
+  contextLengthRankingsChart: "408f1336741488623ed4841adfd301358d1dd44def",
+  naturalLanguageRankingsChart: "4021a2c75bc4eca05acbeb05a4a5c630514c89f588",
+  programmingLanguageRankingsChart: "401bbddd135820823a1c80a973224f9f095c279ccf",
+  imageRankingsChart: "00669b6c1308586c0f510dd4baea268bd0f16dce77",
+  audioRankingsChart: "00ad4919fa3aba9e2842d93f8af3cd8bc2bd9f72e5",
 };
 
 const REFRESH_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
@@ -32,7 +39,7 @@ async function getOrRefreshActionIds(): Promise<typeof cachedActionIds> {
     .catch(() => cachedActionIds)
     .finally(() => { refreshPromise = null; });
 
-  return cachedActionIds;
+  return refreshPromise;
 }
 
 async function fetchWithRetry(input: RequestInfo | URL, init: RequestInit, attempts = 2) {
@@ -113,8 +120,30 @@ export type LiveModelRankings = {
   leaderboard: ModelRankItem[];
   marketShareSeries: MarketShareItem[][];
   marketShareItems: MarketShareItem[];
+  metricCharts: LiveMetricCharts;
   period: RankingPeriod;
   updatedAt: string | null;
+};
+
+export type MetricChartPoint = {
+  date: string;
+  parts: ModelMetricItem[];
+};
+
+export type LiveMetricChart = {
+  series: MetricChartPoint[];
+  items: ModelMetricItem[];
+  updatedAt: string | null;
+};
+
+export type LiveMetricCharts = {
+  tools?: LiveMetricChart;
+  categories?: LiveMetricChart;
+  contextLength?: LiveMetricChart;
+  naturalLanguage?: LiveMetricChart;
+  programmingLanguage?: LiveMetricChart;
+  images?: LiveMetricChart;
+  audio?: LiveMetricChart;
 };
 
 async function fetchText(url: string) {
@@ -172,6 +201,13 @@ async function discoverActionIds() {
     actionIds.modelLeaderboard = extractActionId(chunk, "getModelRankingsCached") || actionIds.modelLeaderboard;
     actionIds.authorTimeline = extractActionId(chunk, "getWeeklyAuthorTokenTimelineCached") || actionIds.authorTimeline;
     actionIds.appRankingsMap = extractActionId(chunk, "getAppRankingsMap") || actionIds.appRankingsMap;
+    actionIds.toolRankingsChart = extractActionId(chunk, "getModelToolRankingsChartDataCached") || actionIds.toolRankingsChart;
+    actionIds.useCaseRankingsChart = extractActionId(chunk, "getUseCaseCategoryRankingsChartDataCached") || actionIds.useCaseRankingsChart;
+    actionIds.contextLengthRankingsChart = extractActionId(chunk, "getContextLengthRankingsChartDataCached") || actionIds.contextLengthRankingsChart;
+    actionIds.naturalLanguageRankingsChart = extractActionId(chunk, "getNaturalLanguageRankingsChartDataCached") || actionIds.naturalLanguageRankingsChart;
+    actionIds.programmingLanguageRankingsChart = extractActionId(chunk, "getProgrammingLanguageRankingsChartDataCached") || actionIds.programmingLanguageRankingsChart;
+    actionIds.imageRankingsChart = extractActionId(chunk, "getModelImageRankingsChartDataCached") || actionIds.imageRankingsChart;
+    actionIds.audioRankingsChart = extractActionId(chunk, "getModelAudioRankingsChartDataCached") || actionIds.audioRankingsChart;
 
     if (
       actionIds.modelChart !== fallbackActionIds.modelChart &&
@@ -402,6 +438,7 @@ function transformAuthorTimeline(rows: RawChartPoint[]) {
         const author = normalizeAuthor(rawAuthor);
         return {
           rank: index + 1,
+          date: point.x,
           author,
           tokens: formatTokenCount(tokens),
           valueT: tokens / 1_000_000_000_000,
@@ -412,6 +449,88 @@ function transformAuthorTimeline(rows: RawChartPoint[]) {
       .sort((a, b) => b.share - a.share)
       .map((item, index) => ({ ...item, rank: index + 1 }));
   });
+}
+
+function transformModelAuthorTimeline(rows: RawChartPoint[], modelMap: Map<string, UpstreamModel>) {
+  return rows.map((point) => {
+    const authorTotals = new Map<string, number>();
+
+    for (const [slug, tokens] of Object.entries(point.ys)) {
+      const { author } = getModelDisplay(slug, modelMap);
+      authorTotals.set(author, (authorTotals.get(author) || 0) + tokens);
+    }
+
+    const total = [...authorTotals.values()].reduce((sum, tokens) => sum + tokens, 0);
+
+    return [...authorTotals.entries()]
+      .map(([author, tokens]) => ({
+        rank: 0,
+        date: point.x,
+        author,
+        tokens: formatTokenCount(tokens),
+        valueT: tokens / 1_000_000_000_000,
+        share: total ? (tokens / total) * 100 : 0,
+        color: authorColors[author] || authorColors.others,
+      }))
+      .sort((a, b) => b.share - a.share)
+      .map((item, index) => ({ ...item, rank: index + 1 }));
+  });
+}
+
+function formatMetricValue(value: number, unit: "tokens" | "calls" | "requests") {
+  const suffix = unit === "calls" ? "calls" : unit;
+  return `${formatAppTokenCount(value)} ${suffix}`;
+}
+
+function transformMetricChart(rows: RawChartPoint[], modelMap: Map<string, UpstreamModel>, unit: "tokens" | "calls" | "requests"): LiveMetricChart {
+  const series = rows.map((point): MetricChartPoint => {
+    const total = Object.values(point.ys).reduce((sum, value) => sum + value, 0);
+    const parts = Object.entries(point.ys)
+      .map(([slug, value], index): ModelMetricItem => {
+        const { label, author } = getModelDisplay(slug, modelMap);
+        return {
+          rank: index + 1,
+          name: label,
+          author,
+          metric: formatMetricValue(value, unit),
+          subMetric: unit === "calls" ? "tool usage" : undefined,
+          value: total ? (value / total) * 100 : 0,
+          change: 0,
+          direction: "flat",
+          color: authorColors[author] || authorColors.others,
+        };
+      })
+      .sort((a, b) => b.value - a.value)
+      .map((item, index) => ({ ...item, rank: index + 1 }));
+
+    return { date: point.x, parts };
+  });
+  const latest = series.at(-1);
+  const previous = series.at(-2);
+  const previousByName = new Map(previous?.parts.map((item) => [item.name, item.value]) || []);
+
+  const items = (latest?.parts || []).slice(0, 10).map((item, index) => {
+    const previousShare = previousByName.get(item.name);
+    const delta = previousShare ? ((item.value - previousShare) / previousShare) * 100 : 0;
+
+    return {
+      ...item,
+      rank: index + 1,
+      change: Math.round(Math.abs(delta)),
+      direction: delta > 0 ? ("up" as TrendDirection) : delta < 0 ? ("down" as TrendDirection) : ("flat" as TrendDirection),
+    };
+  });
+
+  return {
+    series,
+    items,
+    updatedAt: latest?.date || null,
+  };
+}
+
+async function callMetricChart(actionId: string, args: unknown[], modelMap: Map<string, UpstreamModel>, unit: "tokens" | "calls" | "requests") {
+  const rows = await callRankingAction<RawChartPoint[]>(actionId, args);
+  return transformMetricChart(rows, modelMap, unit);
 }
 
 function getAppAuthor(row: RawAppRankingRow) {
@@ -469,18 +588,36 @@ async function fetchLiveModelRankings(period: RankingPeriod = "week"): Promise<L
       getOrRefreshActionIds(),
     ]);
 
-    const [chartData, leaderboardRows, authorTimeline] = await Promise.all([
+    const [chartData, leaderboardRows] = await Promise.all([
       callRankingAction<RawChartResponse>(actionIds.modelChart, []),
       callRankingAction<RawLeaderboardRow[]>(actionIds.modelLeaderboard, [period]),
-      callRankingAction<RawChartPoint[]>(actionIds.authorTimeline, []),
     ]);
-    const marketShareSeries = transformAuthorTimeline(authorTimeline);
+    const metricResults = await Promise.allSettled([
+      callMetricChart(actionIds.toolRankingsChart, [], modelMap, "calls"),
+      callMetricChart(actionIds.useCaseRankingsChart, ["programming"], modelMap, "tokens"),
+      callMetricChart(actionIds.contextLengthRankingsChart, ["10K"], modelMap, "requests"),
+      callMetricChart(actionIds.naturalLanguageRankingsChart, ["Chinese (Simplified)"], modelMap, "tokens"),
+      callMetricChart(actionIds.programmingLanguageRankingsChart, ["Python"], modelMap, "tokens"),
+      callMetricChart(actionIds.imageRankingsChart, [], modelMap, "requests"),
+      callMetricChart(actionIds.audioRankingsChart, [], modelMap, "requests"),
+    ]);
+    const marketShareSeries = transformModelAuthorTimeline(chartData.data, modelMap);
+    const metricCharts: LiveMetricCharts = {
+      tools: metricResults[0].status === "fulfilled" ? metricResults[0].value : undefined,
+      categories: metricResults[1].status === "fulfilled" ? metricResults[1].value : undefined,
+      contextLength: metricResults[2].status === "fulfilled" ? metricResults[2].value : undefined,
+      naturalLanguage: metricResults[3].status === "fulfilled" ? metricResults[3].value : undefined,
+      programmingLanguage: metricResults[4].status === "fulfilled" ? metricResults[4].value : undefined,
+      images: metricResults[5].status === "fulfilled" ? metricResults[5].value : undefined,
+      audio: metricResults[6].status === "fulfilled" ? metricResults[6].value : undefined,
+    };
 
     return {
       topModelsSeries: transformChartData(chartData, modelMap),
       leaderboard: transformLeaderboard(leaderboardRows, modelMap),
       marketShareSeries,
       marketShareItems: marketShareSeries.at(-1)?.slice(0, 10) || [],
+      metricCharts,
       period,
       updatedAt: chartData.cachedAt ? new Date(chartData.cachedAt).toISOString() : null,
     };
@@ -490,7 +627,7 @@ async function fetchLiveModelRankings(period: RankingPeriod = "week"): Promise<L
   }
 }
 
-export const getLiveModelRankings = unstable_cache(fetchLiveModelRankings, ["mgeo-live-rankings-v3"], {
+export const getLiveModelRankings = unstable_cache(fetchLiveModelRankings, ["mgeo-live-rankings-v4"], {
   revalidate: REVALIDATE_SECONDS,
 });
 

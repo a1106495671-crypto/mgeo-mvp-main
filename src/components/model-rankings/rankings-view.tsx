@@ -27,7 +27,7 @@ import {
   type ModelRankItem,
   type TrendDirection,
 } from "@/lib/model/rankings-snapshot";
-import type { AppRankingPeriod, LiveModelRankings, ModelUsagePoint, RankingPeriod } from "@/lib/model/live-rankings";
+import type { AppRankingPeriod, LiveModelRankings, MetricChartPoint, ModelUsagePoint, RankingPeriod } from "@/lib/model/live-rankings";
 
 import styles from "./rankings-view.module.css";
 
@@ -213,6 +213,7 @@ function UsageTooltip({
 
 function ShareTooltip({
   rows,
+  date,
   index,
   x,
   y,
@@ -221,6 +222,7 @@ function ShareTooltip({
   chartWidth,
 }: {
   rows: Array<{ id: string; label: string; value: number; share: number; color: string }>;
+  date?: string;
   index: number;
   x: number;
   y: number;
@@ -237,7 +239,7 @@ function ShareTooltip({
       className={styles.chartTooltipObject}
     >
       <div className={styles.chartTooltip}>
-        <div className={styles.tooltipDate}>{getWeekLabel(index, 54)}</div>
+        <div className={styles.tooltipDate}>{date ? formatChartDate(date) : getWeekLabel(index, 54)}</div>
         <div className={styles.tooltipRows}>
           {rows
             .slice()
@@ -296,6 +298,30 @@ function buildAxisLabels(series: ModelUsagePoint[]) {
   }));
 }
 
+function buildMetricAxisLabels(series: MetricChartPoint[]) {
+  if (!series.some((item) => item.date)) return buildReadableAxisLabels(weekLabels);
+
+  return buildReadableAxisLabels(weekLabels.map((_, index) => {
+    const seriesIndex = Math.round((index / Math.max(1, weekLabels.length - 1)) * (series.length - 1));
+    const date = series[seriesIndex]?.date;
+    return date ? formatChartDate(date).replace(/^\d+年/, index === 0 ? "$&" : "") : "";
+  }));
+}
+
+function getMarketPointDate(point: MarketShareItem[]) {
+  return (point[0] as MarketShareItem & { date?: string } | undefined)?.date || "";
+}
+
+function buildMarketAxisLabels(series: MarketShareItem[][]) {
+  if (!series.some((item) => getMarketPointDate(item))) return buildReadableAxisLabels(weekLabels);
+
+  return buildReadableAxisLabels(weekLabels.map((_, index) => {
+    const seriesIndex = Math.round((index / Math.max(1, weekLabels.length - 1)) * (series.length - 1));
+    const date = getMarketPointDate(series[seriesIndex] || []);
+    return date ? formatChartDate(date).replace(/^\d+年/, index === 0 ? "$&" : "") : "";
+  }));
+}
+
 function buildReadableAxisLabels(labels: string[]) {
   return labels.map((label, index) => (index === 1 && /^\d+年/.test(labels[0] || "") ? "" : label));
 }
@@ -320,7 +346,7 @@ function buildMarketSeries() {
 function buildMetricSeries(items: ModelMetricItem[]) {
   const chartItems = items.slice(0, 8);
 
-  return Array.from({ length: 54 }, (_, index) => {
+  return Array.from({ length: 54 }, (_, index): MetricChartPoint => {
     const progress = index / 53;
     const total = 32 + progress * 52 + Math.max(0, progress - 0.66) * 42 + Math.sin(index * 0.33) * 4;
     const parts = chartItems.map((item, itemIndex) => {
@@ -332,10 +358,13 @@ function buildMetricSeries(items: ModelMetricItem[]) {
     });
     const sum = parts.reduce((acc, item) => acc + item.value, 0);
 
-    return parts.map((item) => ({
-      ...item,
-      value: (item.value / sum) * Math.min(100, Math.max(18, total)),
-    }));
+    return {
+      date: "",
+      parts: parts.map((item) => ({
+        ...item,
+        value: (item.value / sum) * Math.min(100, Math.max(18, total)),
+      })),
+    };
   });
 }
 
@@ -722,8 +751,9 @@ function LanguageSelect({
   );
 }
 
-function MetricStackedChart({ items }: { items: ModelMetricItem[] }) {
-  const series = buildMetricSeries(items);
+function MetricStackedChart({ items, series: liveSeries }: { items: ModelMetricItem[]; series?: MetricChartPoint[] }) {
+  const series = liveSeries?.length ? liveSeries : buildMetricSeries(items);
+  const axisLabels = buildMetricAxisLabels(series);
   const width = 1120;
   const height = 360;
   const left = 52;
@@ -752,7 +782,7 @@ function MetricStackedChart({ items }: { items: ModelMetricItem[] }) {
           let yCursor = top + plotHeight;
           return (
             <g key={index}>
-              {week.map((part) => {
+              {week.parts.map((part) => {
                 const h = Math.max(1, (part.value / 100) * plotHeight);
                 yCursor -= h;
                 return (
@@ -769,13 +799,13 @@ function MetricStackedChart({ items }: { items: ModelMetricItem[] }) {
             </g>
           );
         })}
-        {buildReadableAxisLabels(weekLabels).map((label, index) => {
-          const x = left + (plotWidth / (weekLabels.length - 1)) * index;
+        {axisLabels.map((label, index) => {
+          const x = left + (plotWidth / (axisLabels.length - 1)) * index;
           return <text key={`${index}-${label}`} x={x} y={height - 9} textAnchor={index === 0 ? "start" : "middle"} className={styles.axisText}>{label}</text>;
         })}
         {series.map((week, index) => {
           const x = left + index * (barWidth + barGap);
-          const tooltipRows = week.map((part) => ({
+          const tooltipRows = week.parts.map((part) => ({
             id: `${part.rank}-${part.name}`,
             label: part.name,
             value: part.value,
@@ -788,6 +818,7 @@ function MetricStackedChart({ items }: { items: ModelMetricItem[] }) {
               <rect x={x} y={top} width={barWidth} height={plotHeight} className={styles.hoverTarget} />
               <ShareTooltip
                 rows={tooltipRows}
+                date={week.date}
                 index={index}
                 x={x}
                 y={top + 28}
@@ -882,6 +913,7 @@ function TopModelsChart({ series: liveSeries }: { series?: ModelUsagePoint[] }) 
 
 function MarketShareChart({ series: liveSeries }: { series?: MarketShareItem[][] }) {
   const series = liveSeries?.length ? liveSeries : buildMarketSeries();
+  const axisLabels = buildMarketAxisLabels(series);
   const width = 1120;
   const height = 392;
   const left = 52;
@@ -918,9 +950,9 @@ function MarketShareChart({ series: liveSeries }: { series?: MarketShareItem[][]
             </g>
           );
         })}
-        {buildReadableAxisLabels(weekLabels).map((label, index) => {
-          const x = left + (plotWidth / (weekLabels.length - 1)) * index;
-          const textAnchor = index === 0 ? "start" : index === weekLabels.length - 1 ? "end" : "middle";
+        {axisLabels.map((label, index) => {
+          const x = left + (plotWidth / (axisLabels.length - 1)) * index;
+          const textAnchor = index === 0 ? "start" : index === axisLabels.length - 1 ? "end" : "middle";
           return <text key={`${index}-${label}`} x={x} y={height - 28} textAnchor={textAnchor} className={styles.axisText}>{label}</text>;
         })}
         {series.map((week, index) => {
@@ -938,6 +970,7 @@ function MarketShareChart({ series: liveSeries }: { series?: MarketShareItem[][]
               <rect x={x} y={top} width={barWidth} height={plotHeight} className={styles.hoverTarget} />
               <ShareTooltip
                 rows={tooltipRows}
+                date={getMarketPointDate(week)}
                 index={index}
                 x={x}
                 y={top + 28}
@@ -1164,6 +1197,14 @@ export function ModelRankingsView({
   const initialLeaderboardItems = liveRankings?.leaderboard?.length ? liveRankings.leaderboard : modelWeeklySnapshot;
   const marketSeries = liveRankings?.marketShareSeries?.length ? liveRankings.marketShareSeries : undefined;
   const marketItems = liveRankings?.marketShareItems?.length ? liveRankings.marketShareItems : marketShareSnapshot;
+  const metricCharts = liveRankings?.metricCharts || {};
+  const toolItems = metricCharts.tools?.items?.length ? metricCharts.tools.items : toolCallsSnapshot;
+  const categoryItems = metricCharts.categories?.items?.length ? metricCharts.categories.items : categoryRankingsSnapshot;
+  const contextItems = metricCharts.contextLength?.items?.length ? metricCharts.contextLength.items : contextLengthSnapshot;
+  const naturalLanguageItems = metricCharts.naturalLanguage?.items?.length ? metricCharts.naturalLanguage.items : naturalLanguageSnapshot;
+  const programmingLanguageItems = metricCharts.programmingLanguage?.items?.length ? metricCharts.programmingLanguage.items : programmingLanguageSnapshot;
+  const imageItems = metricCharts.images?.items?.length ? metricCharts.images.items : imageRankingsSnapshot;
+  const audioItems = metricCharts.audio?.items?.length ? metricCharts.audio.items : audioRankingsSnapshot;
   const [leaderboardItems, setLeaderboardItems] = useState<ModelRankItem[]>(initialLeaderboardItems);
   const [period, setPeriod] = useState<RankingPeriod>(liveRankings?.period || "week");
   const [isPeriodLoading, setIsPeriodLoading] = useState(false);
@@ -1175,7 +1216,8 @@ export function ModelRankingsView({
   const [isAppPeriodLoading, setIsAppPeriodLoading] = useState(false);
   const [appPeriodError, setAppPeriodError] = useState("");
   const benchmarkItems = getBenchmarkItems(benchmarkMode);
-  const languageItems = getLanguageItems(languageMode);
+  const languageItems = languageMode === "zh" ? (metricCharts.naturalLanguage?.items?.length ? metricCharts.naturalLanguage.items : chineseLanguageSnapshot) : naturalLanguageItems;
+  const languageSeries = languageMode === "zh" ? metricCharts.naturalLanguage?.series : undefined;
 
   useEffect(() => {
     setLeaderboardItems(initialLeaderboardItems);
@@ -1285,8 +1327,8 @@ export function ModelRankingsView({
 
         <section className={styles.module} id="tools">
           <SectionHeading icon="tool" title="Tool Calls" description="对比不同模型的工具调用使用量" />
-          <MetricStackedChart items={toolCallsSnapshot} />
-          <MetricRankingRows items={toolCallsSnapshot} />
+          <MetricStackedChart items={toolItems} series={metricCharts.tools?.series} />
+          <MetricRankingRows items={toolItems} />
         </section>
 
         <section className={styles.module} id="benchmarks">
@@ -1328,14 +1370,14 @@ export function ModelRankingsView({
 
         <section className={styles.module} id="context-length">
           <SectionHeading icon="context" title="Context Length" description="按上下文窗口对比模型使用情况" control="10K" />
-          <MetricStackedChart items={contextLengthSnapshot} />
-          <MetricRankingRows items={contextLengthSnapshot} />
+          <MetricStackedChart items={contextItems} series={metricCharts.contextLength?.series} />
+          <MetricRankingRows items={contextItems} />
         </section>
 
         <section className={styles.module} id="categories">
           <SectionHeading icon="tag" title="Categories" description="按使用场景对比模型表现" control="Programming" />
-          <MetricStackedChart items={categoryRankingsSnapshot} />
-          <MetricRankingRows items={categoryRankingsSnapshot} />
+          <MetricStackedChart items={categoryItems} series={metricCharts.categories?.series} />
+          <MetricRankingRows items={categoryItems} />
         </section>
 
         <section className={styles.module} id="natural-languages">
@@ -1345,26 +1387,26 @@ export function ModelRankingsView({
             description="按自然语言使用量对比模型表现"
             control={<LanguageSelect value={languageMode} onChange={setLanguageMode} />}
           />
-          <MetricStackedChart items={languageItems} />
+          <MetricStackedChart items={languageItems} series={languageSeries} />
           <MetricRankingRows items={languageItems} />
         </section>
 
         <section className={styles.module} id="programming-languages">
           <SectionHeading icon="code" title="Programming" description="按编程语言使用量对比模型表现" control="Python" />
-          <MetricStackedChart items={programmingLanguageSnapshot} />
-          <MetricRankingRows items={programmingLanguageSnapshot} />
+          <MetricStackedChart items={programmingLanguageItems} series={metricCharts.programmingLanguage?.series} />
+          <MetricRankingRows items={programmingLanguageItems} />
         </section>
 
         <section className={styles.module} id="images">
           <SectionHeading icon="image" title="Images" description="模型处理图像任务的累计趋势" />
-          <MetricStackedChart items={imageRankingsSnapshot} />
-          <MetricRankingRows items={imageRankingsSnapshot} />
+          <MetricStackedChart items={imageItems} series={metricCharts.images?.series} />
+          <MetricRankingRows items={imageItems} />
         </section>
 
         <section className={styles.module} id="audio">
           <SectionHeading icon="audio" title="Audio Input" description="模型处理音频输入的累计趋势" />
-          <MetricStackedChart items={audioRankingsSnapshot} />
-          <MetricRankingRows items={audioRankingsSnapshot} />
+          <MetricStackedChart items={audioItems} series={metricCharts.audio?.series} />
+          <MetricRankingRows items={audioItems} />
         </section>
 
         <section className={styles.module} id="apps">
